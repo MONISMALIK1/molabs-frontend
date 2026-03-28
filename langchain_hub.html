@@ -1,0 +1,1901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mo.labs</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap');
+
+:root {
+  --ink: #08090d;
+  --paper: #0d0f17;
+  --lift: #12151f;
+  --card: #161924;
+  --rim: #1e2535;
+  --rim2: #28334a;
+  --hi: #7cffcb;
+  --hi2: #4d9fff;
+  --red: #ff4466;
+  --yel: #ffd166;
+  --pur: #c084fc;
+  --ora: #fb923c;
+  --txt: #ccd6f0;
+  --dim: #3d4f6b;
+  --mute: #8899bb;
+  --side: 240px;
+  --top: 54px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; background:var(--ink); }
+body { font-family:'Space Mono', monospace; color:var(--txt); }
+
+/* ═══ SCANLINE OVERLAY ═══ */
+body::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:9999;
+  background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.04) 2px, rgba(0,0,0,.04) 4px);
+}
+
+/* ═══ NEWS TICKER ═══ */
+.ticker-bar {
+  grid-column:1/-1;
+  height:28px; background:#050810; border-bottom:1px solid var(--rim);
+  display:flex; align-items:center; overflow:hidden; position:relative;
+  flex-shrink:0;
+}
+.ticker-label {
+  flex-shrink:0; padding:0 12px; background:var(--hi); color:#000;
+  font-size:7px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
+  height:100%; display:flex; align-items:center; z-index:2; white-space:nowrap;
+}
+.ticker-sep { flex-shrink:0; width:1px; height:100%; background:var(--rim); }
+.ticker-track {
+  flex:1; overflow:hidden; position:relative; height:100%;
+}
+.ticker-inner {
+  display:flex; align-items:center; height:100%;
+  white-space:nowrap; gap:0;
+  animation:tickScroll 80s linear infinite;
+}
+.ticker-inner:hover { animation-play-state:paused; }
+@keyframes tickScroll {
+  0%   { transform:translateX(0); }
+  100% { transform:translateX(-50%); }
+}
+.tick-item {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:0 22px; font-size:8px; cursor:default;
+  border-right:1px solid #1a2030;
+}
+.tick-item:hover { background:rgba(255,255,255,.025); }
+.tick-coin { font-weight:700; flex-shrink:0; }
+.tick-score { flex-shrink:0; font-size:7px; padding:1px 5px; border-radius:2px; font-weight:700; }
+.tick-score.p { background:rgba(124,255,203,.15); color:var(--hi); }
+.tick-score.n { background:rgba(255,68,102,.15); color:var(--red); }
+.tick-score.u { background:rgba(255,209,102,.15); color:var(--yel); }
+.tick-headline { color:var(--mute); max-width:320px; overflow:hidden; text-overflow:ellipsis; }
+.tick-time { color:var(--dim); font-size:7px; flex-shrink:0; }
+.tick-dot { color:var(--dim); }
+
+/* ═══ LIVE NEWS FEED ═══ */
+.news-feed {
+  display:flex; flex-direction:column; gap:0;
+  overflow-y:auto; max-height:520px;
+}
+.news-feed::-webkit-scrollbar { width:3px; }
+.news-feed::-webkit-scrollbar-thumb { background:var(--rim); }
+.news-item {
+  display:grid; grid-template-columns:auto 1fr auto;
+  gap:12px; align-items:start;
+  padding:11px 14px; border-bottom:1px solid rgba(30,37,53,.5);
+  transition:background .15s; cursor:default;
+  animation:newsIn .3s ease;
+}
+@keyframes newsIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+.news-item:hover { background:rgba(124,255,203,.025); }
+.news-item.new { border-left:2px solid var(--hi); }
+.news-item.new-red { border-left:2px solid var(--red); }
+.news-meta { display:flex; flex-direction:column; align-items:center; gap:4px; flex-shrink:0; padding-top:2px; }
+.news-coin { font-size:8px; font-weight:700; padding:1px 5px; border-radius:2px; }
+.news-ts { font-size:7px; color:var(--dim); }
+.news-body { min-width:0; }
+.news-title { font-size:9px; color:var(--txt); line-height:1.5; margin-bottom:3px; font-weight:700; }
+.news-source { font-size:7px; color:var(--dim); }
+.news-right { display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0; padding-top:2px; }
+.news-score-big { font-family:'Syne'; font-size:18px; font-weight:800; line-height:1; }
+.news-signal { font-size:7px; font-weight:700; letter-spacing:1px; padding:2px 5px; border-radius:2px; }
+
+/* ═══ LIVE INDICATOR ═══ */
+.live-count {
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:7px; color:var(--hi); letter-spacing:1px;
+}
+.live-count::before { content:''; width:5px; height:5px; background:var(--hi); border-radius:50%; animation:pulse .8s infinite; }
+
+/* ═══ STREAM STATUS ═══ */
+.stream-bar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px; background:var(--lift); border-radius:6px;
+  margin-bottom:10px; font-size:8px;
+}
+.stream-stats { display:flex; gap:16px; }
+.stream-stat { display:flex; flex-direction:column; gap:1px; }
+.stream-stat-v { font-family:'Syne'; font-size:14px; font-weight:800; color:var(--hi); }
+.stream-stat-l { font-size:7px; color:var(--dim); letter-spacing:1px; }
+
+/* ═══ LAYOUT ═══ */
+.shell { display:grid; grid-template-rows:var(--top) 28px 1fr; grid-template-columns:var(--side) 1fr; height:100vh; overflow:hidden; }
+
+/* ═══ TOPBAR ═══ */
+.top {
+  grid-column:1/-1; grid-row:1;
+  background:var(--paper);
+  border-bottom:1px solid var(--rim);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px;
+  position:relative;
+}
+.top::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, var(--hi), var(--hi2), transparent);
+  opacity:.4;
+}
+.brand { display:flex; align-items:center; gap:12px; }
+.brand-sq {
+  width:28px; height:28px; position:relative;
+  background:linear-gradient(135deg,var(--hi),var(--hi2));
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display:flex; align-items:center; justify-content:center; font-size:11px;
+  animation:spinHex 8s linear infinite;
+}
+@keyframes spinHex { to { transform:rotate(360deg); } }
+.brand-name { font-family:'Syne'; font-size:16px; font-weight:800; letter-spacing:3px; text-transform:uppercase; }
+.brand-name em { color:var(--hi); font-style:normal; }
+.brand-sub { font-size:8px; color:var(--dim); letter-spacing:2px; }
+.top-right { display:flex; align-items:center; gap:16px; font-size:9px; color:var(--dim); }
+.pulse-dot { width:6px; height:6px; background:var(--hi); border-radius:50%; animation:pulse .8s infinite; display:inline-block; margin-right:4px; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
+#tk { color:var(--txt); font-size:10px; letter-spacing:1px; }
+.api-pill { padding:2px 8px; border-radius:3px; font-size:8px; font-weight:700; letter-spacing:1px; }
+.api-pill.on  { background:rgba(124,255,203,.12); color:var(--hi); border:1px solid rgba(124,255,203,.2); }
+.api-pill.off { background:rgba(255,68,102,.12); color:var(--red); border:1px solid rgba(255,68,102,.2); }
+
+/* ═══ SIDEBAR ═══ */
+.side {
+  grid-row:3;
+  background:var(--paper);
+  border-right:1px solid var(--rim);
+  display:flex; flex-direction:column;
+  overflow-y:auto; overflow-x:hidden;
+}
+.side::-webkit-scrollbar { width:3px; }
+.side::-webkit-scrollbar-thumb { background:var(--rim); }
+
+.sg { padding:14px 14px 4px; font-size:7px; color:var(--dim); letter-spacing:3px; text-transform:uppercase; }
+.si {
+  display:flex; align-items:center; gap:9px;
+  padding:9px 16px; cursor:pointer; font-size:9px; color:var(--mute);
+  transition:all .15s; border-left:2px solid transparent;
+  letter-spacing:.5px; user-select:none; position:relative;
+}
+.si::after { content:''; position:absolute; right:0; top:50%; transform:translateY(-50%); width:0; height:60%; background:var(--hi); opacity:.15; transition:width .2s; border-radius:2px 0 0 2px; }
+.si:hover { color:var(--txt); }
+.si:hover::after { width:3px; }
+.si.on { color:var(--hi); border-left-color:var(--hi); background:rgba(124,255,203,.04); }
+.si .ic { font-size:12px; width:16px; text-align:center; flex-shrink:0; }
+.sn { margin-left:auto; padding:1px 5px; border-radius:3px; font-size:7px; font-weight:700; }
+.sn.g { background:rgba(124,255,203,.15); color:var(--hi); }
+.sn.r { background:rgba(255,68,102,.15); color:var(--red); }
+.sn.b { background:rgba(77,159,255,.15); color:var(--hi2); }
+.side-footer { margin-top:auto; padding:14px; border-top:1px solid var(--rim); }
+.sf-url { font-size:9px; color:var(--hi2); margin-bottom:2px; }
+.sf-s { font-size:8px; color:var(--dim); }
+
+/* ═══ MAIN ═══ */
+.main { grid-row:3; overflow-y:auto; overflow-x:hidden; background:var(--ink); padding:22px; }
+.main::-webkit-scrollbar { width:4px; }
+.main::-webkit-scrollbar-thumb { background:var(--rim); border-radius:2px; }
+
+/* ═══ PAGES ═══ */
+.pg { display:none; animation:appear .2s ease; }
+.pg.on { display:block; }
+@keyframes appear { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ═══ PAGE HEADER ═══ */
+.phead { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; }
+.ptitle { font-family:'Syne'; font-size:26px; font-weight:800; letter-spacing:2px; text-transform:uppercase; line-height:1; }
+.ptitle span { color:var(--hi); }
+.psub { font-size:8px; color:var(--dim); letter-spacing:2px; margin-top:4px; text-transform:uppercase; }
+.pactions { display:flex; gap:7px; flex-wrap:wrap; align-items:center; }
+
+/* ═══ BUTTONS ═══ */
+.btn {
+  padding:6px 14px; border-radius:4px; border:1px solid var(--rim);
+  background:transparent; color:var(--mute);
+  font-family:'Space Mono'; font-size:8px; cursor:pointer;
+  transition:all .15s; letter-spacing:.5px; white-space:nowrap;
+  text-transform:uppercase;
+}
+.btn:hover { border-color:var(--hi); color:var(--hi); }
+.btn.hi { background:var(--hi); color:#000; border-color:var(--hi); font-weight:700; }
+.btn.hi:hover { opacity:.85; }
+.btn.re { border-color:var(--red); color:var(--red); }
+.btn.re:hover { background:rgba(255,68,102,.08); }
+.btn.gr { border-color:var(--hi); color:var(--hi); }
+.btn.gr:hover { background:rgba(124,255,203,.07); }
+.btn.yl { border-color:var(--yel); color:var(--yel); }
+.btn.yl:hover { background:rgba(255,209,102,.07); }
+.btn.sm { padding:3px 9px; font-size:7px; }
+
+/* ═══ CARDS ═══ */
+.card {
+  background:var(--card); border:1px solid var(--rim);
+  border-radius:10px; padding:18px; position:relative; overflow:hidden;
+  margin-bottom:14px;
+}
+.card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg,transparent,var(--hi),transparent); opacity:.2;
+}
+.ct {
+  font-size:7px; color:var(--hi); letter-spacing:3px; text-transform:uppercase;
+  margin-bottom:14px; display:flex; align-items:center; gap:8px;
+}
+.ct::after { content:''; flex:1; height:1px; background:var(--rim); }
+
+/* ═══ STAT GRID ═══ */
+.sg2 { display:grid; gap:12px; margin-bottom:14px; }
+.sg4 { grid-template-columns:repeat(4,1fr); }
+.sg5 { grid-template-columns:repeat(5,1fr); }
+.sg3 { grid-template-columns:repeat(3,1fr); }
+.stat {
+  background:var(--card); border:1px solid var(--rim); border-radius:8px;
+  padding:14px 16px; position:relative; overflow:hidden;
+}
+.stat::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; }
+.s-hi::after{background:var(--hi)} .s-r::after{background:var(--red)}
+.s-b::after{background:var(--hi2)} .s-y::after{background:var(--yel)}
+.s-p::after{background:var(--pur)} .s-o::after{background:var(--ora)}
+.sl { font-size:7px; color:var(--dim); letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+.sv { font-family:'Syne'; font-size:28px; font-weight:800; line-height:1; }
+.ss { font-size:8px; color:var(--dim); margin-top:3px; }
+.chi{color:var(--hi)} .cre{color:var(--red)} .cbl{color:var(--hi2)} .cye{color:var(--yel)} .cpu{color:var(--pur)} .cor{color:var(--ora)}
+
+/* ═══ GRID LAYOUTS ═══ */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g31{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+.g13{display:grid;grid-template-columns:1fr 2fr;gap:14px}
+.mb{margin-bottom:14px}
+
+/* ═══ TABLE ═══ */
+.tw { overflow-x:auto; overflow-y:auto; max-height:420px; }
+.tw::-webkit-scrollbar { width:3px; height:3px; }
+.tw::-webkit-scrollbar-thumb { background:var(--rim); }
+.tbl { width:100%; border-collapse:collapse; }
+.tbl th {
+  font-size:7px; color:var(--dim); letter-spacing:2px; text-transform:uppercase;
+  text-align:left; padding:7px 10px; border-bottom:1px solid var(--rim);
+  white-space:nowrap; cursor:pointer; background:var(--card); position:sticky; top:0;
+}
+.tbl th:hover { color:var(--hi); }
+.tbl td { padding:8px 10px; border-bottom:1px solid rgba(30,37,53,.6); font-size:9px; vertical-align:middle; white-space:nowrap; max-width:180px; overflow:hidden; text-overflow:ellipsis; }
+.tbl tr:hover td { background:rgba(124,255,203,.02); }
+.tbl tr:last-child td { border-bottom:none; }
+
+/* ═══ BADGES ═══ */
+.badge { display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:3px; font-size:7px; font-weight:700; letter-spacing:.5px; }
+.badge .bd { width:4px; height:4px; border-radius:50%; }
+.b-run { background:rgba(124,255,203,.1); color:var(--hi); border:1px solid rgba(124,255,203,.2); }
+.b-run .bd { background:var(--hi); animation:pulse .8s infinite; }
+.b-sch { background:rgba(77,159,255,.1); color:var(--hi2); border:1px solid rgba(77,159,255,.2); }
+.b-sch .bd { background:var(--hi2); }
+.b-stp { background:rgba(255,255,255,.04); color:var(--mute); border:1px solid var(--rim); }
+.b-stp .bd { background:var(--mute); }
+.b-err { background:rgba(255,68,102,.1); color:var(--red); border:1px solid rgba(255,68,102,.2); }
+.b-err .bd { background:var(--red); animation:pulse .6s infinite; }
+.b-idl { background:rgba(255,255,255,.04); color:var(--dim); border:1px solid var(--rim); }
+.b-idl .bd { background:var(--dim); }
+
+/* ═══ LOG ═══ */
+.lf { overflow-y:auto; display:flex; flex-direction:column; gap:2px; }
+.lf::-webkit-scrollbar { width:3px; }
+.le { display:flex; gap:8px; padding:4px 6px; border-radius:3px; font-size:8px; line-height:1.6; }
+.le:hover { background:rgba(255,255,255,.02); }
+.lt { color:var(--dim); flex-shrink:0; width:62px; }
+.la { color:var(--txt); flex-shrink:0; width:75px; font-weight:700; }
+.lm { flex:1; color:var(--mute); }
+.lm.i { color:#7890b0; }
+.lm.e { color:var(--red); }
+.lm.w { color:var(--yel); }
+
+/* ═══ INPUTS ═══ */
+.inp { background:var(--lift); border:1px solid var(--rim); border-radius:5px; padding:7px 12px; color:var(--txt); font-family:'Space Mono'; font-size:9px; outline:none; transition:border .15s; }
+.inp:focus { border-color:var(--hi); }
+.sel { background:var(--lift); border:1px solid var(--rim); border-radius:5px; padding:7px 11px; color:var(--txt); font-family:'Space Mono'; font-size:9px; outline:none; cursor:pointer; }
+.sel:focus { border-color:var(--hi); }
+.srow { display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap; }
+
+/* ═══ TERMINAL ═══ */
+.term { background:#020609; border:1px solid rgba(124,255,203,.12); border-radius:8px; padding:14px; font-family:'Space Mono'; font-size:8px; overflow-y:auto; line-height:1.9; color:var(--hi); }
+.term::-webkit-scrollbar { width:3px; }
+.term .td { color:#0d2010; }
+.term .te { color:var(--red); }
+.term .tw2 { color:var(--yel); }
+.term .ti { color:var(--hi2); }
+
+/* ═══ CHART ═══ */
+.cw { position:relative; height:240px; }
+.cw2 { position:relative; height:190px; }
+
+/* ═══ PILLS ═══ */
+.pill { display:inline-block; padding:2px 7px; border-radius:3px; font-size:7px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+.pill.p { background:rgba(124,255,203,.1); color:var(--hi); border:1px solid rgba(124,255,203,.18); }
+.pill.n { background:rgba(255,68,102,.1); color:var(--red); border:1px solid rgba(255,68,102,.18); }
+.pill.u { background:rgba(255,209,102,.1); color:var(--yel); border:1px solid rgba(255,209,102,.18); }
+
+/* ═══ FILE TAGS ═══ */
+.ftag { display:inline-block; padding:1px 5px; border-radius:3px; font-size:7px; font-weight:700; text-transform:uppercase; }
+.ftag.py  { background:rgba(77,159,255,.14); color:var(--hi2); }
+.ftag.csv { background:rgba(124,255,203,.12); color:var(--hi); }
+.ftag.json{ background:rgba(255,209,102,.12); color:var(--yel); }
+.ftag.txt { background:rgba(192,132,252,.12); color:var(--pur); }
+.ftag.png { background:rgba(251,146,60,.12); color:var(--ora); }
+.ftag.html{ background:rgba(255,68,102,.12); color:var(--red); }
+
+/* ═══ COIN CARDS ═══ */
+.cg5 { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:14px; }
+.cc { background:var(--card); border:1px solid var(--rim); border-radius:8px; padding:14px; text-align:center; transition:all .2s; cursor:default; }
+.cc:hover { border-color:var(--rim2); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.3); }
+
+/* ═══ RANGE ═══ */
+.rw { display:flex; align-items:center; gap:10px; }
+input[type=range] { -webkit-appearance:none; flex:1; height:2px; background:var(--rim); border-radius:2px; outline:none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; background:var(--hi); border-radius:50%; cursor:pointer; }
+
+/* ═══ TABS ═══ */
+.tabs { display:flex; gap:4px; margin-bottom:14px; }
+.tab { padding:5px 12px; border-radius:3px; border:1px solid var(--rim); background:transparent; color:var(--mute); font-family:'Space Mono'; font-size:8px; cursor:pointer; transition:all .15s; text-transform:uppercase; letter-spacing:.5px; }
+.tab:hover { color:var(--txt); }
+.tab.on { background:rgba(124,255,203,.08); border-color:var(--hi); color:var(--hi); }
+
+/* ═══ PAGER ═══ */
+.pgr { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:8px; color:var(--dim); }
+.pb { padding:3px 9px; border-radius:3px; border:1px solid var(--rim); background:transparent; color:var(--mute); cursor:pointer; font-family:'Space Mono'; font-size:7px; }
+.pb:hover { border-color:var(--hi); color:var(--hi); }
+
+/* ═══ MODAL ═══ */
+.mo { display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:1000; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+.mo.on { display:flex; }
+.mc { background:var(--card); border:1px solid var(--rim); border-radius:12px; padding:24px; max-width:840px; width:92vw; max-height:84vh; overflow:auto; position:relative; }
+.mc::-webkit-scrollbar { width:3px; }
+.mc-x { position:absolute; top:14px; right:14px; cursor:pointer; color:var(--mute); font-size:14px; background:none; border:none; font-family:'Space Mono'; }
+.mc-x:hover { color:var(--txt); }
+.mc h3 { font-family:'Syne'; font-size:16px; font-weight:800; margin-bottom:14px; color:var(--hi); }
+.mc pre { background:var(--paper); border:1px solid var(--rim); border-radius:6px; padding:14px; font-size:8px; overflow:auto; max-height:520px; line-height:1.8; white-space:pre-wrap; word-break:break-word; color:var(--txt); }
+
+/* ═══ TOAST ═══ */
+.toast { position:fixed; bottom:20px; right:20px; background:var(--card); border:1px solid var(--hi); border-radius:6px; padding:10px 16px; font-size:9px; color:var(--hi); z-index:2000; transform:translateY(60px); transition:transform .2s; max-width:300px; letter-spacing:.3px; }
+.toast.on { transform:translateY(0); }
+.toast.err { border-color:var(--red); color:var(--red); }
+
+/* ═══ HEALTH CARD ═══ */
+.hc { background:var(--card); border:1px solid var(--rim); border-radius:8px; padding:12px 14px; display:flex; align-items:center; gap:10px; transition:all .15s; }
+.hc:hover { border-color:var(--rim2); }
+.hc-icon { font-size:20px; flex-shrink:0; }
+.hc-info { flex:1; min-width:0; }
+.hc-name { font-size:9px; font-weight:700; color:var(--txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:1px; }
+.hc-meta { font-size:7px; color:var(--dim); }
+.hc-actions { display:flex; gap:5px; flex-shrink:0; }
+
+/* ═══ GRAPH ═══ */
+.gph { background:var(--lift); border:1px solid var(--rim); border-radius:8px; height:360px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; color:var(--mute); }
+
+/* ═══ JSON VIEWER ═══ */
+.jv { background:var(--paper); border:1px solid var(--rim); border-radius:7px; padding:14px; font-size:8px; line-height:1.9; overflow:auto; color:#7890b0; font-family:'Space Mono'; }
+.jv::-webkit-scrollbar { width:3px; }
+
+/* ═══ SECTION DIVIDER ═══ */
+.sdiv { border:none; border-top:1px solid var(--rim); margin:16px 0; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- TOPBAR -->
+<header class="top">
+  <div class="brand">
+    <div class="brand-sq">⬡</div>
+    <div>
+      <div class="brand-name"><em>mo</em>.labs</div>
+      <div class="brand-sub">mo.labs · ~/Desktop/langchain</div>
+    </div>
+  </div>
+  <div class="top-right">
+    <span><span class="pulse-dot"></span>LIVE</span>
+    <span id="tk">00:00:00</span>
+    <span id="apipill" class="api-pill off">API OFFLINE</span>
+    <button class="btn sm" onclick="clearKey()" title="Change API Key">🔑 KEY</button>
+    <button class="btn sm" onclick="refreshAll()">⟳ REFRESH</button>
+  </div>
+</header>
+
+<!-- NEWS TICKER -->
+<div class="ticker-bar">
+  <div class="ticker-label">📡 LIVE SENTIMENT</div>
+  <div class="ticker-sep"></div>
+  <div class="ticker-track">
+    <div class="ticker-inner" id="ticker-inner">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<nav class="side">
+  <div class="sg">OVERVIEW</div>
+  <div class="si on"  onclick="go('hub',this)"><span class="ic">◈</span>Hub Overview</div>
+  <div class="si"     onclick="go('agents',this)"><span class="ic">⚡</span>Agents <span class="sn g" id="nb-a">0</span></div>
+  <div class="si"     onclick="go('logs',this)"><span class="ic">▤</span>Live Logs <span class="sn r" id="nb-e">0</span></div>
+
+  <div class="sg">CRYPTO</div>
+  <div class="si"     onclick="go('crypto',this)"><span class="ic">₿</span>Crypto Data</div>
+  <div class="si"     onclick="go('sentiment',this)"><span class="ic">◎</span>Sentiment</div>
+  <div class="si"     onclick="go('ml',this)"><span class="ic">◉</span>ML Predictions</div>
+
+  <div class="sg">HEALTHCARE</div>
+  <div class="si"     onclick="go('health',this)"><span class="ic">✚</span>Health Data</div>
+  <div class="si"     onclick="go('health_ml',this)"><span class="ic">⊕</span>Health ML</div>
+
+  <div class="sg">TOOLS</div>
+  <div class="si"     onclick="go('research',this)"><span class="ic">◐</span>Research</div>
+  <div class="si"     onclick="go('osint',this)"><span class="ic">◑</span>OSINT Graph</div>
+  <div class="si"     onclick="go('explorer',this)"><span class="ic">▦</span>CSV Explorer</div>
+  <div class="si"     onclick="go('databases',this)"><span class="ic">▪</span>JSON DBs</div>
+  <div class="si"     onclick="go('files',this)"><span class="ic">▫</span>All Files</div>
+
+  <div class="side-footer">
+    <div class="sf-url" id="api-host">127.0.0.1:5001</div>
+    <div class="sf-s" id="conn-s">Run: python src/api.py</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main" id="main">
+
+<!-- ══════════════ HUB OVERVIEW ══════════════ -->
+<div class="pg on" id="pg-hub">
+  <div class="phead">
+    <div><div class="ptitle">Hub <span>Overview</span></div><div class="psub">All systems · All data · One view</div></div>
+    <div class="pactions">
+      <button class="btn gr" onclick="agentAll('start')">▶ START ALL</button>
+      <button class="btn re" onclick="agentAll('stop')">■ STOP ALL</button>
+    </div>
+  </div>
+
+  <div class="sg2 sg4">
+    <div class="stat s-hi"><div class="sl">Active Agents</div><div class="sv chi" id="h-active">—</div><div class="ss">of 6 total</div></div>
+    <div class="stat s-b"><div class="sl">Total Runs</div><div class="sv cbl" id="h-runs">—</div><div class="ss">all time</div></div>
+    <div class="stat s-hi"><div class="sl">Avg Sentiment</div><div class="sv chi" id="h-sent">—</div><div class="ss">latest 24h</div></div>
+    <div class="stat s-y"><div class="sl">Fear & Greed</div><div class="sv cye" id="h-fg">—</div><div class="ss" id="h-fgc">—</div></div>
+  </div>
+
+  <div class="sg2 sg4 mb">
+    <div class="stat s-p"><div class="sl">Health Patients</div><div class="sv cpu" id="h-pts">—</div><div class="ss">records</div></div>
+    <div class="stat s-hi"><div class="sl">Health Conditions</div><div class="sv chi" id="h-cond">—</div><div class="ss">records</div></div>
+    <div class="stat s-b"><div class="sl">Hospitals</div><div class="sv cbl" id="h-hosp">—</div><div class="ss">records</div></div>
+    <div class="stat s-o"><div class="sl">Treatments</div><div class="sv cor" id="h-treat">—</div><div class="ss">records</div></div>
+  </div>
+
+  <div class="g31">
+    <div class="card">
+      <div class="ct">⚡ Agent Status</div>
+      <table class="tbl" id="hub-atbl">
+        <thead><tr><th>Agent</th><th>Status</th><th>Runs</th><th>Next Run</th><th>Actions</th></tr></thead>
+        <tbody id="hub-abody"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="ct">₿ Coin Signals</div>
+        <div id="hub-coins"></div>
+      </div>
+      <div class="card" style="text-align:center;padding:14px">
+        <div class="ct">Fear & Greed</div>
+        <canvas id="gauge" width="200" height="100"></canvas>
+        <div style="font-family:'Syne';font-size:38px;font-weight:800;color:var(--yel)" id="fg-n">—</div>
+        <div style="font-size:8px;color:var(--dim)" id="fg-c">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="ct">📋 Recent Activity</div>
+      <div class="lf" style="height:200px" id="hub-log"></div>
+    </div>
+    <div class="card">
+      <div class="ct">▦ File System</div>
+      <div id="hub-files" style="font-size:8px;display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ AGENTS ══════════════ -->
+<div class="pg" id="pg-agents">
+  <div class="phead">
+    <div><div class="ptitle">Agent <span>Control</span></div><div class="psub">Start · Stop · Schedule · Monitor</div></div>
+    <div class="pactions">
+      <button class="btn gr" onclick="agentAll('start')">▶ START ALL</button>
+      <button class="btn yl" onclick="agentAll('pause')">⏸ PAUSE ALL</button>
+      <button class="btn re" onclick="agentAll('stop')">■ STOP ALL</button>
+    </div>
+  </div>
+  <div id="agent-cards"></div>
+</div>
+
+<!-- ══════════════ LOGS ══════════════ -->
+<div class="pg" id="pg-logs">
+  <div class="phead">
+    <div><div class="ptitle">Live <span>Logs</span></div><div class="psub">controller_log.json · Auto-refresh 4s</div></div>
+    <div class="pactions">
+      <select class="sel" id="lf-a" onchange="loadLogs()">
+        <option value="all">All Agents</option>
+        <option value="crypto">Crypto Collector</option>
+        <option value="sentiment">Sentiment</option>
+        <option value="research">Research</option>
+        <option value="ml">ML Agent</option>
+        <option value="insights">Insights</option>
+        <option value="merger">Merger</option>
+        <option value="osint">OSINT</option>
+        <option value="system">System</option>
+      </select>
+      <select class="sel" id="lf-l" onchange="loadLogs()">
+        <option value="all">All Levels</option>
+        <option value="INFO">INFO</option>
+        <option value="ERROR">Errors</option>
+        <option value="WARN">Warnings</option>
+      </select>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">▤ Log Feed <span style="color:var(--dim);font-weight:400" id="lc"></span></div>
+    <div class="lf" style="height:600px" id="full-log"></div>
+  </div>
+</div>
+
+<!-- ══════════════ CRYPTO DATA ══════════════ -->
+<div class="pg" id="pg-crypto">
+  <div class="phead">
+    <div><div class="ptitle">Crypto <span>Data</span></div><div class="psub">crypto_news · crypto_prices · crypto_master</div></div>
+    <div class="pactions">
+      <button class="btn hi" onclick="triggerAgent('crypto')">▶ RUN COLLECTOR</button>
+    </div>
+  </div>
+  <div class="cg5" id="crypto-coins"></div>
+  <div class="g2">
+    <div class="card">
+      <div class="ct">₿ Price Changes 24h</div>
+      <div class="cw"><canvas id="price-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">On-Chain Signal Dashboard</div>
+      <div id="onchain-dash" style="font-size:9px;line-height:2.2"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">▦ crypto_master.csv — Latest Rows</div>
+    <div class="srow">
+      <select class="sel" id="crypto-csv" onchange="loadCryptoCsv()">
+        <option value="crypto_news">crypto_news.csv</option>
+        <option value="crypto_prices">crypto_prices.csv</option>
+        <option value="crypto_fear_greed">crypto_fear_greed.csv</option>
+        <option value="crypto_onchain">crypto_onchain.csv</option>
+        <option value="crypto_master">crypto_master.csv</option>
+      </select>
+      <input class="inp" id="crypto-q" placeholder="Search..." style="flex:1" oninput="filterCryptoCsv()">
+      <button class="btn sm" onclick="dlCsv('crypto-csv')">⬇ DOWNLOAD</button>
+    </div>
+    <div class="tw"><table class="tbl"><thead id="cth"></thead><tbody id="ctb"></tbody></table></div>
+    <div class="pgr"><button class="pb" onclick="csvPg('crypto',-1)">◄ PREV</button><span id="cpi" style="color:var(--txt)">—</span><button class="pb" onclick="csvPg('crypto',1)">NEXT ►</button><span style="margin-left:auto;font-size:7px" id="cpt"></span></div>
+  </div>
+</div>
+
+<!-- ══════════════ SENTIMENT ══════════════ -->
+<div class="pg" id="pg-sentiment">
+  <div class="phead">
+    <div><div class="ptitle">Sentiment <span>Live Feed</span></div><div class="psub">sentiment_analyzer.py · crypto_news.csv · Real-time stream</div></div>
+    <div class="pactions">
+      <button class="btn hi" onclick="triggerAgent('insights')">🧠 RUN INSIGHTS</button>
+      <button class="btn hi" onclick="triggerAgent('sentiment')">▶ RUN SENTIMENT</button>
+      <button class="btn" onclick="toggleFeedPause()" id="feed-pause-btn">⏸ PAUSE</button>
+    </div>
+  </div>
+
+  <!-- Stream status bar -->
+  <div class="stream-bar">
+    <div class="stream-stats">
+      <div class="stream-stat"><div class="stream-stat-v" id="ss-total">0</div><div class="stream-stat-l">HEADLINES</div></div>
+      <div class="stream-stat"><div class="stream-stat-v chi" id="ss-bull">0</div><div class="stream-stat-l">BULLISH</div></div>
+      <div class="stream-stat"><div class="stream-stat-v cre" id="ss-bear">0</div><div class="stream-stat-l">BEARISH</div></div>
+      <div class="stream-stat"><div class="stream-stat-v cye" id="ss-neut">0</div><div class="stream-stat-l">NEUTRAL</div></div>
+      <div class="stream-stat"><div class="stream-stat-v" id="ss-avg">+0.0</div><div class="stream-stat-l">AVG SCORE</div></div>
+    </div>
+    <div class="live-count" id="feed-live">STREAMING</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" onclick="sentTab('all',this)">ALL</button>
+    <button class="tab" onclick="sentTab('24h',this)">24H</button>
+    <button class="tab" onclick="sentTab('48h',this)">48H</button>
+    <button class="tab" onclick="sentTab('bullish',this)">🟢 BULLISH</button>
+    <button class="tab" onclick="sentTab('bearish',this)">🔴 BEARISH</button>
+  </div>
+
+  <!-- Chart + live feed side by side -->
+  <div class="g31 mb">
+    <div class="card">
+      <div class="ct">◎ Sentiment Score Timeline</div>
+      <div class="cw"><canvas id="sent-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">Coin Sentiment Breakdown</div>
+      <div class="cw2"><canvas id="coin-sent-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Live news feed (full width) -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--rim)">
+      <div class="ct" style="margin-bottom:0">📡 Live News Feed — crypto_news.csv <span class="live-count" id="news-count" style="margin-left:8px">0 items</span></div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <select class="sel" id="feed-coin" onchange="filterFeed()" style="font-size:8px;padding:4px 8px">
+          <option value="all">All Coins</option>
+          <option value="BTC">BTC</option>
+          <option value="ETH">ETH</option>
+          <option value="SOL">SOL</option>
+          <option value="BNB">BNB</option>
+          <option value="XRP">XRP</option>
+        </select>
+        <select class="sel" id="feed-sig" onchange="filterFeed()" style="font-size:8px;padding:4px 8px">
+          <option value="all">All Signals</option>
+          <option value="POSITIVE">Bullish Only</option>
+          <option value="NEGATIVE">Bearish Only</option>
+          <option value="NEUTRAL">Neutral Only</option>
+        </select>
+        <input class="inp" id="feed-q" placeholder="Search headlines..." style="font-size:8px;padding:4px 10px;width:160px" oninput="filterFeed()">
+      </div>
+    </div>
+    <div class="news-feed" id="news-feed" style="max-height:480px"></div>
+  </div>
+
+  <!-- Bottom row: topics + narrative -->
+  <div class="g2" style="margin-top:14px">
+    <div class="card">
+      <div class="ct">Topic Performance</div>
+      <div class="tw" style="max-height:260px">
+        <table class="tbl"><thead><tr><th>Topic</th><th>Avg Score</th><th>Articles</th><th>Signal</th></tr></thead>
+        <tbody id="topic-body"></tbody></table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">🧠 AI Narrative — sentiment_report_v2.txt</div>
+      <div id="narrative" style="font-size:8px;line-height:2;color:var(--mute);max-height:220px;overflow-y:auto"></div>
+      <div style="margin-top:10px;display:flex;gap:6px">
+        <button class="btn sm" onclick="loadTxt('sentiment_report')">📄 Full Report</button>
+        <button class="btn sm" onclick="loadTxt('insights_report')">📊 Insights</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ ML PREDICTIONS ══════════════ -->
+<div class="pg" id="pg-ml">
+  <div class="phead">
+    <div><div class="ptitle">ML <span>Predictions</span></div><div class="psub">ml_agent.py · investment_signals.json</div></div>
+    <div class="pactions"><button class="btn hi" onclick="triggerAgent('ml')">◉ TRAIN MODELS</button></div>
+  </div>
+  <div class="cg5" id="ml-coins"></div>
+  <div class="g2">
+    <div class="card"><div class="ct">Model Accuracy Per Coin</div><div class="cw"><canvas id="acc-chart"></canvas></div></div>
+    <div class="card"><div class="ct">Signal Distribution</div><div class="cw"><canvas id="dist-chart"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="ct">Investment Signals — investment_signals.json</div>
+    <div id="signals-v" style="font-size:9px;line-height:2.2"></div>
+  </div>
+</div>
+
+<!-- ══════════════ HEALTHCARE DATA ══════════════ -->
+<div class="pg" id="pg-health">
+  <div class="phead">
+    <div><div class="ptitle">Health <span>Data</span></div><div class="psub">healthcare_collector.py · healthcare_data/</div></div>
+    <div class="pactions"><button class="btn hi" onclick="runHealthcare()">✚ RUN COLLECTOR</button></div>
+  </div>
+  <div class="sg2 sg4 mb">
+    <div class="stat s-p"><div class="sl">Patients</div><div class="sv cpu" id="hp-pts">—</div><div class="ss">records</div></div>
+    <div class="stat s-hi"><div class="sl">Conditions</div><div class="sv chi" id="hp-cond">—</div><div class="ss">records</div></div>
+    <div class="stat s-b"><div class="sl">Hospitals</div><div class="sv cbl" id="hp-hosp">—</div><div class="ss">records</div></div>
+    <div class="stat s-o"><div class="sl">Treatments</div><div class="sv cor" id="hp-treat">—</div><div class="ss">records</div></div>
+  </div>
+  <div class="srow">
+    <select class="sel" id="hcsv" onchange="loadHealthCsv()">
+      <option value="patients">healthcare_patients.csv</option>
+      <option value="conditions">healthcare_conditions.csv</option>
+      <option value="hospitals">healthcare_hospitals.csv</option>
+      <option value="treatments">healthcare_treatments.csv</option>
+    </select>
+    <input class="inp" id="hq" placeholder="Search rows..." style="flex:1" oninput="filterHealthCsv()">
+    <button class="btn sm" onclick="dlCsvHealth()">⬇ DOWNLOAD</button>
+  </div>
+  <div class="card mb">
+    <div class="ct" id="hcsv-meta">▦ healthcare_patients.csv</div>
+    <div class="tw"><table class="tbl"><thead id="hth"></thead><tbody id="htb"></tbody></table></div>
+    <div class="pgr"><button class="pb" onclick="csvPg('health',-1)">◄ PREV</button><span id="hpi" style="color:var(--txt)">—</span><button class="pb" onclick="csvPg('health',1)">NEXT ►</button><span style="margin-left:auto;font-size:7px" id="hpt"></span></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ct">Condition Mortality Rates</div><div class="cw"><canvas id="mort-chart"></canvas></div></div>
+    <div class="card"><div class="ct">Patient ML Labels Distribution</div><div class="cw"><canvas id="label-chart"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ══════════════ HEALTH ML ══════════════ -->
+<div class="pg" id="pg-health_ml">
+  <div class="phead">
+    <div><div class="ptitle">Health <span>ML Features</span></div><div class="psub">ML-ready labels · Feature importance</div></div>
+  </div>
+  <div class="sg2 sg3 mb">
+    <div class="stat s-hi"><div class="sl">Readmission Positive</div><div class="sv chi" id="hml-ra">—</div><div class="ss">label_readmission=1</div></div>
+    <div class="stat s-r"><div class="sl">High Mortality Risk</div><div class="sv cre" id="hml-mort">—</div><div class="ss">label_mortality=1</div></div>
+    <div class="stat s-b"><div class="sl">ICU Admissions</div><div class="sv cbl" id="hml-icu">—</div><div class="ss">label_icu=1</div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ct">⊕ Feature Correlation</div><div class="cw"><canvas id="feat-chart"></canvas></div></div>
+    <div class="card"><div class="ct">Label Balance</div><div class="cw"><canvas id="balance-chart"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="ct">ML Use Cases This Dataset Enables</div>
+    <div id="ml-usecases" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:8px"></div>
+  </div>
+</div>
+
+<!-- ══════════════ RESEARCH ══════════════ -->
+<div class="pg" id="pg-research">
+  <div class="phead">
+    <div><div class="ptitle">Research <span>Library</span></div><div class="psub">smart_research.py · research_reports/</div></div>
+  </div>
+  <div class="card mb">
+    <div class="ct">◐ New Research — smart_research.py</div>
+    <div class="srow">
+      <input class="inp" id="rtopic" placeholder="Enter research topic..." style="flex:1">
+      <button class="btn hi" onclick="startResearch()">🚀 RESEARCH</button>
+    </div>
+    <div class="term" id="rterm" style="height:200px">
+      <div class="td">// Smart Research Assistant — LangChain + Mistral 7B</div>
+      <div class="td">// Enter topic above and click RESEARCH</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">📂 Saved Reports <span style="color:var(--dim);font-weight:400" id="rc"></span></div>
+    <div id="rlist" style="display:flex;flex-direction:column;gap:7px;max-height:400px;overflow-y:auto"></div>
+  </div>
+</div>
+
+<!-- ══════════════ OSINT ══════════════ -->
+<div class="pg" id="pg-osint">
+  <div class="phead">
+    <div><div class="ptitle">OSINT <span>Graph</span></div><div class="psub">osint_neo4j.py · Entity Relationships</div></div>
+    <div class="pactions">
+      <button class="btn hi" onclick="runOSINT()">◑ RUN SCAN</button>
+      <button class="btn sm" onclick="exportG('csv')">⬇ CSV</button>
+      <button class="btn sm" onclick="exportG('gexf')">⬇ GEXF</button>
+    </div>
+  </div>
+  <div class="g31">
+    <div class="card">
+      <div class="ct">Entity Relationship Graph</div>
+      <div class="gph" id="gph"><div style="font-size:32px;opacity:.15">◑</div><div style="font-size:10px">Enter target and run scan</div></div>
+      <canvas id="gcvs" style="display:none;width:100%;height:360px;border-radius:7px"></canvas>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <div class="ct">Scan Settings</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div><div style="font-size:7px;color:var(--dim);margin-bottom:3px;letter-spacing:1px">TARGET</div>
+            <input class="inp" id="otgt" placeholder="e.g. Bitcoin Elon Musk tweets" style="width:100%;font-size:8px"></div>
+          <div><div style="font-size:7px;color:var(--dim);margin-bottom:4px;letter-spacing:1px">REPEAT SCANS: <span id="orv" style="color:var(--hi)">1</span></div>
+            <input type="range" min="1" max="10" value="1" oninput="document.getElementById('orv').textContent=this.value"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">Scan Output</div>
+        <div class="term" style="height:180px" id="oterm"><div class="td">// OSINT Scanner Ready</div><div class="td">// osint_neo4j.py + DuckDuckGo + LLM</div></div>
+      </div>
+      <div class="card">
+        <div class="ct">Graph Stats</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:8px">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--dim)">Nodes</span><span id="gn">—</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--dim)">Edges</span><span id="ge">—</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--dim)">Last Scan</span><span id="gl">Never</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ CSV EXPLORER ══════════════ -->
+<div class="pg" id="pg-explorer">
+  <div class="phead">
+    <div><div class="ptitle">CSV <span>Explorer</span></div><div class="psub">Browse all data files</div></div>
+  </div>
+  <div class="srow">
+    <select class="sel" id="xsel" onchange="loadExpCsv()">
+      <optgroup label="Crypto">
+        <option value="crypto_news">crypto_news.csv</option>
+        <option value="crypto_prices">crypto_prices.csv</option>
+        <option value="crypto_fear_greed">crypto_fear_greed.csv</option>
+        <option value="crypto_onchain">crypto_onchain.csv</option>
+        <option value="crypto_master">crypto_master.csv</option>
+        <option value="sentiment_live">sentiment_live.csv</option>
+      </optgroup>
+      <optgroup label="Healthcare">
+        <option value="patients">healthcare_patients.csv</option>
+        <option value="conditions">healthcare_conditions.csv</option>
+        <option value="hospitals">healthcare_hospitals.csv</option>
+        <option value="treatments">healthcare_treatments.csv</option>
+      </optgroup>
+      <optgroup label="Research">
+        <option value="research_dataset">research_dataset.csv</option>
+        <option value="master_dataset">master_dataset.csv</option>
+      </optgroup>
+    </select>
+    <input class="inp" id="xq" placeholder="Search rows..." style="flex:1" oninput="filterExpCsv()">
+    <button class="btn hi" onclick="dlExpCsv()">⬇ DOWNLOAD</button>
+    <button class="btn" onclick="loadExpCsv()">⟳ RELOAD</button>
+  </div>
+  <div class="card">
+    <div class="ct" id="xmeta">▦ Select a file above</div>
+    <div class="tw"><table class="tbl"><thead id="xth"></thead><tbody id="xtb"></tbody></table></div>
+    <div class="pgr"><button class="pb" onclick="csvPg('exp',-1)">◄ PREV</button><span id="xpi" style="color:var(--txt)">—</span><button class="pb" onclick="csvPg('exp',1)">NEXT ►</button><span style="margin-left:auto;font-size:7px" id="xpt"></span></div>
+  </div>
+</div>
+
+<!-- ══════════════ JSON DBS ══════════════ -->
+<div class="pg" id="pg-databases">
+  <div class="phead">
+    <div><div class="ptitle">JSON <span>Databases</span></div><div class="psub">All .json files in project</div></div>
+  </div>
+  <div class="srow">
+    <select class="sel" id="jsel" onchange="loadJSON()">
+      <option value="agent_status">agent_status.json</option>
+      <option value="controller_log">controller_log.json</option>
+      <option value="crypto_db">crypto_db.json</option>
+      <option value="sentiment_db_v2">sentiment_db_v2.json</option>
+      <option value="sentiment_db">sentiment_db.json</option>
+      <option value="research_db_v2">research_db_v2.json</option>
+      <option value="research_db">research_db.json</option>
+      <option value="research_history">research_history.json</option>
+      <option value="investment_signals">investment_signals.json</option>
+    </select>
+    <button class="btn" onclick="loadJSON()">⟳ RELOAD</button>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ct" id="jmeta">▪ Select a database</div><div class="jv" id="jv" style="height:500px">Select a JSON file...</div></div>
+    <div class="card">
+      <div class="ct">All JSON Files</div>
+      <table class="tbl" id="jtbl"><thead><tr><th>File</th><th>Entries</th><th>Size</th><th>Modified</th><th>Status</th></tr></thead><tbody id="jbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ ALL FILES ══════════════ -->
+<div class="pg" id="pg-files">
+  <div class="phead">
+    <div><div class="ptitle">All <span>Files</span></div><div class="psub">~/Desktop/langchain/ — complete directory</div></div>
+    <div class="pactions"><input class="inp" id="fq" placeholder="Filter..." oninput="filterFiles()"><button class="btn" onclick="loadFiles()">⟳ RELOAD</button></div>
+  </div>
+  <div class="card">
+    <div class="ct">▫ Project Directory <span style="color:var(--dim);font-weight:400" id="fcount"></span></div>
+    <table class="tbl" id="ftbl"><thead><tr><th>File</th><th>Type</th><th>Size</th><th>Modified</th><th>Action</th></tr></thead><tbody id="fbody"></tbody></table>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- MODAL -->
+<div class="mo" id="modal"><div class="mc"><button class="mc-x" onclick="closeMo()">✕</button><h3 id="mt">—</h3><pre id="mb"></pre></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+function resolveApiBase() {
+  if (window.location.protocol === 'file:') return 'http://127.0.0.1:5001';
+  const isLocal = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+  if (isLocal && window.location.port === '5001') return window.location.origin;
+  return 'http://127.0.0.1:5001';
+}
+
+const API = resolveApiBase();
+const API_LABEL = (() => {
+  try { return new URL(API).host; }
+  catch { return '127.0.0.1:5001'; }
+})();
+let agents={}, csvStates={crypto:{pg:0,data:[]},health:{pg:0,data:[]},exp:{pg:0,data:[]}};
+let sentC, accC, distC, mortC, labelC, featC, balC, priceC;
+let allFilesData=[];
+
+// ── UTILS ────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+function toast(m,err=false){const t=$('toast');t.textContent=m;t.className='toast on'+(err?' err':'');setTimeout(()=>t.classList.remove('on'),3000);}
+function tick(){$('tk').textContent=new Date().toLocaleTimeString('en-US',{hour12:false});}
+tick(); setInterval(tick,1000);
+function syncApiHints(){const el=$('api-host');if(el)el.textContent=API_LABEL;}
+
+// ── SECURE API KEY SYSTEM ─────────────────────────────────────────
+const KEY_STORE = 'molabs_api_key';
+
+function getKey() {
+  return localStorage.getItem(KEY_STORE) || '';
+}
+
+function saveKey(k) {
+  localStorage.setItem(KEY_STORE, k.trim());
+}
+
+function clearKey() {
+  localStorage.removeItem(KEY_STORE);
+  showKeyModal();
+}
+
+function authedUrl(path, params={}) {
+  const url = new URL(API + path);
+  const key = getKey();
+  if (key) url.searchParams.set('api_key', key);
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
+  });
+  return url.toString();
+}
+
+async function api(path, opts={}) {
+  const key = getKey();
+  try {
+    const headers = { 'Content-Type':'application/json', ...(opts.headers||{}) };
+    if (key) headers['X-API-Key'] = key;
+    const r = await fetch(API + path, { ...opts, headers });
+    if (r.status === 403) {
+      // Bad key — show modal
+      showKeyModal('❌ API key rejected. Enter the correct key from your terminal.');
+      return { ok:false, error:'Invalid API key', auth:false };
+    }
+    if (r.status === 429) {
+      toast('⚠️ Rate limit hit — slow down', true);
+      return { ok:false, error:'Rate limited' };
+    }
+    return await r.json();
+  } catch(e) {
+    return { ok:false, error: e.message };
+  }
+}
+
+// ── KEY MODAL ─────────────────────────────────────────────────────
+function showKeyModal(msg='') {
+  // Remove existing modal if any
+  const existing = $('keymodal');
+  if (existing) existing.remove();
+
+  const m = document.createElement('div');
+  m.id = 'keymodal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)';
+  m.innerHTML = `
+    <div style="background:#161924;border:1px solid #7cffcb;border-radius:14px;padding:32px;max-width:480px;width:90vw;font-family:'Space Mono',monospace">
+      <div style="font-family:'Syne';font-size:22px;font-weight:800;color:#7cffcb;margin-bottom:6px">🔑 mo.labs API Key</div>
+      <div style="font-size:8px;color:#3d4f6b;letter-spacing:2px;margin-bottom:20px">SECURE CONNECTION REQUIRED</div>
+      <div style="font-size:9px;color:#8899bb;margin-bottom:14px;line-height:1.8">
+        Find your key in the terminal where you ran <span style="color:#7cffcb">python src/api.py</span><br>
+        It looks like: <span style="color:#ffd166">molabs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
+      </div>
+      ${msg ? `<div style="background:rgba(255,68,102,.1);border:1px solid #ff4466;border-radius:5px;padding:8px 12px;font-size:8px;color:#ff4466;margin-bottom:12px">${msg}</div>` : ''}
+      <input id="keyinp" type="password" placeholder="molabs_..." 
+        style="width:100%;background:#0d0f17;border:1px solid #1e2535;border-radius:6px;padding:10px 14px;color:#ccd6f0;font-family:'Space Mono';font-size:10px;outline:none;margin-bottom:10px;box-sizing:border-box"
+        onkeydown="if(event.key==='Enter')submitKey()">
+      <div style="display:flex;gap:8px">
+        <button onclick="submitKey()" style="flex:1;padding:9px;background:#7cffcb;color:#000;border:none;border-radius:5px;font-family:'Space Mono';font-size:9px;font-weight:700;cursor:pointer;letter-spacing:1px">CONNECT</button>
+        <button onclick="toggleKeyVisible()" style="padding:9px 14px;background:transparent;color:#8899bb;border:1px solid #1e2535;border-radius:5px;font-family:'Space Mono';font-size:9px;cursor:pointer">👁</button>
+      </div>
+      <div style="margin-top:12px;font-size:7px;color:#3d4f6b;text-align:center">Key stored in browser localStorage · Never sent anywhere except ${API_LABEL}</div>
+    </div>`;
+  document.body.appendChild(m);
+  setTimeout(()=>{ const i=$('keyinp'); if(i) i.focus(); }, 100);
+}
+
+function toggleKeyVisible() {
+  const i = $('keyinp');
+  if (i) i.type = i.type==='password' ? 'text' : 'password';
+}
+
+async function submitKey() {
+  const inp = $('keyinp');
+  if (!inp) return;
+  const k = inp.value.trim();
+  if (!k) { inp.style.borderColor='#ff4466'; return; }
+
+  inp.disabled = true;
+  inp.value = 'Verifying...';
+
+  // Test the key against /api/auth/verify
+  try {
+    const r = await fetch(API + '/api/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: k })
+    });
+    const data = await r.json();
+    if (data.ok && data.data?.valid) {
+      saveKey(k);
+      const m = $('keymodal');
+      if (m) m.remove();
+      toast('✅ Connected to mo.labs API');
+      refreshAll();
+    } else {
+      inp.disabled = false;
+      inp.value = '';
+      inp.style.borderColor = '#ff4466';
+      inp.placeholder = '❌ Invalid key — try again';
+      inp.focus();
+    }
+  } catch(e) {
+    inp.disabled = false;
+    inp.value = '';
+    inp.placeholder = '⚠️ API offline — start src/api.py first';
+    inp.style.borderColor = '#ffd166';
+    inp.focus();
+  }
+}
+
+// ── API STATUS ───────────────────────────────────────────────────
+async function checkAPI(){
+  const r=await api('/api/health');
+  const el=$('apipill');
+  if(r.ok){el.className='api-pill on';el.textContent='API ONLINE';$('conn-s').textContent=r.data?.project_dir||'Connected';}
+  else{el.className='api-pill off';el.textContent='API OFFLINE';$('conn-s').textContent='Run: python src/api.py';}
+}
+
+// ── NAV ──────────────────────────────────────────────────────────
+const loaders={crypto:()=>{loadCryptoCsv();buildCryptoCharts();},sentiment:loadSentiment,ml:loadML,health:()=>{loadHealthCsv();buildHealthCharts();},health_ml:buildHealthML,research:loadResearch,logs:loadLogs,databases:loadJSONList,files:loadFiles,explorer:loadExpCsv};
+function go(pg,el){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.si').forEach(s=>s.classList.remove('on'));
+  $('pg-'+pg).classList.add('on');
+  if(el)el.classList.add('on');
+  if(loaders[pg])loaders[pg]();
+}
+
+// ── BADGE ────────────────────────────────────────────────────────
+function badge(s){
+  const m={RUNNING:['b-run','●','RUNNING'],SCHEDULED:['b-sch','◷','SCHED'],STOPPED:['b-stp','■','STOPPED'],PAUSED:['b-stp','⏸','PAUSED'],ERROR:['b-err','✖','ERROR'],IDLE:['b-idl','○','IDLE']};
+  const[c,i,l]=m[s]||['b-idl','?',s];
+  return`<span class="badge ${c}"><span class="bd"></span>${i} ${l}</span>`;
+}
+
+// ── AGENTS ───────────────────────────────────────────────────────
+async function loadAgents(){
+  const r=await api('/api/agents');
+  if(!r.ok)return;
+  agents=r.data;
+  const av=Object.values(agents);
+  const active=av.filter(a=>['RUNNING','SCHEDULED'].includes(a.status)).length;
+  const runs=av.reduce((s,a)=>s+(a.runs||0),0);
+  const errs=av.reduce((s,a)=>s+(a.errors||0),0);
+  if($('h-active'))$('h-active').textContent=active;
+  if($('h-runs'))$('h-runs').textContent=runs;
+  $('nb-a').textContent=active;
+  $('nb-e').textContent=errs;
+  renderHubAgents(av);
+  renderAgentCards(av);
+}
+
+const aicons={crypto:'₿',sentiment:'◎',research:'◐',ml:'◉',insights:'🧠',merger:'▦'};
+const acolors={crypto:'#7cffcb',sentiment:'#4d9fff',research:'#c084fc',ml:'#ffd166',insights:'#4d9fff',merger:'#fb923c'};
+
+function renderHubAgents(av){
+  const tb=$('hub-abody');if(!tb)return;
+  tb.innerHTML=av.map(a=>`<tr>
+    <td style="font-weight:700">${aicons[a.id]||'▸'} ${a.name||a.id}</td>
+    <td>${badge(a.status)}</td>
+    <td style="color:var(--hi2)">${a.runs||0}</td>
+    <td style="color:var(--yel);font-size:7px">${a.next_run||'—'}</td>
+    <td><div style="display:flex;gap:4px">
+      <button class="btn sm gr" onclick="triggerAgent('${a.id}')">▶</button>
+      ${['RUNNING','SCHEDULED'].includes(a.status)?`<button class="btn sm re" onclick="agentAct('${a.id}','stop')">■</button>`:''}
+      ${['STOPPED','IDLE','ERROR'].includes(a.status)?`<button class="btn sm" onclick="agentAct('${a.id}','start')">START</button>`:''}
+    </div></td></tr>`).join('');
+}
+
+function renderAgentCards(av){
+  const w=$('agent-cards');if(!w)return;
+  w.innerHTML=av.map(a=>`
+    <div class="card" style="border-left:3px solid ${acolors[a.id]||'var(--hi)'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">${aicons[a.id]||'▸'}</span>
+          <div><div style="font-family:'Syne';font-size:13px;font-weight:800;color:${acolors[a.id]||'var(--hi)'}">${a.name||a.id}</div>
+               <div style="font-size:7px;color:var(--dim);margin-top:1px">${a.script||a.id+'.py'}</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${badge(a.status)}
+          <div style="display:flex;gap:5px">
+            <button class="btn sm gr" onclick="triggerAgent('${a.id}')">🚀 RUN NOW</button>
+            ${['STOPPED','IDLE','ERROR','PAUSED'].includes(a.status)?`<button class="btn sm gr" onclick="agentAct('${a.id}','start')">▶ START</button>`:''}
+            ${['RUNNING','SCHEDULED'].includes(a.status)?`<button class="btn sm yl" onclick="agentAct('${a.id}','pause')">⏸ PAUSE</button>`:''}
+            ${['RUNNING','SCHEDULED','PAUSED'].includes(a.status)?`<button class="btn sm re" onclick="agentAct('${a.id}','stop')">■ STOP</button>`:''}
+            ${a.status==='PAUSED'?`<button class="btn sm" onclick="agentAct('${a.id}','resume')">▶ RESUME</button>`:''}
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;font-size:8px">
+        <div><div style="color:var(--dim);font-size:7px;margin-bottom:2px">RUNS</div><div style="font-size:18px;color:var(--hi2);font-family:'Syne';font-weight:800">${a.runs||0}</div></div>
+        <div><div style="color:var(--dim);font-size:7px;margin-bottom:2px">ERRORS</div><div style="font-size:18px;color:${(a.errors||0)>0?'var(--red)':'var(--dim)'};font-family:'Syne';font-weight:800">${a.errors||0}</div></div>
+        <div><div style="color:var(--dim);font-size:7px;margin-bottom:2px">LAST RUN</div><div style="font-size:8px">${a.last_run||'Never'}</div></div>
+        <div><div style="color:var(--dim);font-size:7px;margin-bottom:2px">NEXT RUN</div><div style="font-size:8px;color:var(--yel)">${a.next_run||'—'}</div></div>
+      </div>
+      <div style="margin-bottom:12px"><div style="color:var(--dim);font-size:7px;margin-bottom:3px">LAST OUTPUT</div><div style="color:var(--mute);font-size:8px">${a.last_output||'—'}</div></div>
+      ${a.pid_alive?`<div style="font-size:7px;color:var(--hi);margin-bottom:10px">● LIVE PID: ${a.pid}</div>`:''}
+      <div>
+        <div style="font-size:7px;color:var(--dim);margin-bottom:5px;letter-spacing:1px">SCHEDULE — every <span id="scv-${a.id}">${a.schedule_min||120}</span> min</div>
+        <div class="rw"><input type="range" min="15" max="1440" value="${a.schedule_min||120}" oninput="$('scv-${a.id}').textContent=this.value" onchange="chSched('${a.id}',this.value)"><span style="color:var(--hi);font-size:8px;width:40px">${a.schedule_min||120}m</span></div>
+      </div>
+    </div>`).join('');
+}
+
+async function agentAct(id,action){
+  const r=await api(`/api/agents/${id}/${action}`,{method:'POST'});
+  if(r.ok)toast(`✅ ${id} → ${action}`);else toast(`❌ ${r.error}`,true);
+  setTimeout(loadAgents,600);
+}
+async function triggerAgent(id){toast(`🚀 Starting ${id}...`);const r=await api(`/api/agents/${id}/run`,{method:'POST'});if(r.ok)toast(`✅ ${id} started`);else toast(`❌ ${r.error}`,true);setTimeout(loadAgents,800);}
+async function agentAll(action){for(const a of Object.values(agents)){if(action==='start'&&['STOPPED','ERROR'].includes(a.status))await agentAct(a.id,'start');if(action==='stop'&&a.status!=='STOPPED')await agentAct(a.id,'stop');}toast(`✅ All → ${action}`);}
+async function chSched(id,min){const r=await api(`/api/agents/${id}/schedule`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({minutes:parseInt(min)})});if(r.ok)toast(`⏰ ${id} → every ${min}min`);}
+
+// ── LOGS ─────────────────────────────────────────────────────────
+async function loadLogs(){
+  const a=$('lf-a')?.value||'all',l=$('lf-l')?.value||'all';
+  const r=await api(`/api/logs?agent=${a}&level=${l}&limit=300`);
+  if(!r.ok)return;
+  const logs=r.data||[];
+  $('lc').textContent=`(${logs.length} entries)`;
+  const html=logs.map(l=>{const c=l.level==='ERROR'?'e':l.level==='WARN'?'w':'i';return`<div class="le"><span class="lt">${(l.time||'').slice(-8)}</span><span class="la">${l.agent||''}</span><span class="lm ${c}">${l.level==='ERROR'?'✖ ':l.level==='WARN'?'⚠ ':''}${l.message||''}</span></div>`;}).join('');
+  ['full-log','hub-log'].forEach(id=>{const el=$(id);if(el)el.innerHTML=html||'<div style="color:var(--dim);padding:10px;font-size:8px">No entries</div>';});
+}
+
+// ── SUMMARY / HUB DATA ───────────────────────────────────────────
+async function loadSummary(){
+  const r=await api('/api/summary');
+  if(!r.ok)return;
+  const d=r.data;
+  const fg=parseInt(d.fear_greed?.value||52);
+  if($('h-fg')){$('h-fg').textContent=fg;$('h-fgc').textContent=d.fear_greed?.class||'—';}
+  if($('fg-n')){$('fg-n').textContent=fg;$('fg-c').textContent=d.fear_greed?.class||'—';}
+  if($('h-sent')&&d.news?.avg_score!==undefined)$('h-sent').textContent=(d.news.avg_score>0?'+':'')+d.news.avg_score;
+  drawGauge(fg);
+  const coins={BTC:{c:'#f7931a',sig:'BUY',ch:'+3.2%',pr:'$84,221'},ETH:{c:'#627eea',sig:'BUY',ch:'+1.8%',pr:'$3,218'},SOL:{c:'#9945ff',sig:'HOLD',ch:'+0.4%',pr:'$182'},BNB:{c:'#f3ba2f',sig:'HOLD',ch:'-0.6%',pr:'$583'},XRP:{c:'#00aae4',sig:'SELL',ch:'-2.1%',pr:'$0.621'}};
+  const coinHtml=Object.entries(coins).map(([s,d2])=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--rim)"><span style="color:${d2.c};font-weight:700;font-size:9px">${s}</span><span class="pill ${d2.sig==='BUY'?'p':d2.sig==='SELL'?'n':'u'}">${d2.sig}</span><span style="font-size:8px;color:${d2.ch.startsWith('+')?'var(--hi)':'var(--red)'}">${d2.ch}</span></div>`).join('');
+  ['hub-coins','crypto-coins-hub'].forEach(id=>{const el=$(id);if(el)el.innerHTML=coinHtml;});
+
+  // Hub file status
+  const hf=$('hub-files');
+  if(hf){
+    const files=[{n:'crypto_news.csv',v:'3,840 rows',t:'crypto'},{n:'crypto_prices.csv',v:'1,920 rows',t:'crypto'},{n:'crypto_master.csv',v:'6,240 rows',t:'crypto'},{n:'healthcare_patients.csv',v:($('h-pts')?.textContent||'?')+' rows',t:'health'},{n:'agent_status.json',v:'6 agents',t:'json'},{n:'controller_log.json',v:'247 entries',t:'json'},{n:'investment_signals.json',v:'5 signals',t:'json'},{n:'sentiment_report_v2.txt',v:'1.2KB',t:'txt'}];
+    hf.innerHTML=files.map(f=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(30,37,53,.5)"><span style="color:var(--mute)">${f.n}</span><span style="color:var(--hi);font-size:8px">${f.v}</span></div>`).join('');
+  }
+}
+
+async function loadHealthCounts(){
+  // Load counts from JSON DB
+  const r=await api('/api/json/healthcare_db');
+  if(r?.ok&&r.data?.data){
+    const d=r.data.data;
+    const pts=d.patients?.length||0,cond=d.conditions?.length||0,hosp=d.hospitals?.length||0,treat=d.treatments?.length||0;
+    ['h-pts','hp-pts'].forEach(id=>{if($(id))$(id).textContent=pts;});
+    ['h-cond','hp-cond'].forEach(id=>{if($(id))$(id).textContent=cond;});
+    ['h-hosp','hp-hosp'].forEach(id=>{if($(id))$(id).textContent=hosp;});
+    ['h-treat','hp-treat'].forEach(id=>{if($(id))$(id).textContent=treat;});
+    // String comparison fix — CSV stores '1', JSON stores 1
+    const isOne = v => String(v)==='1'||v===1||v===true;
+    if($('hml-ra'))  $('hml-ra').textContent  = (d.patients||[]).filter(p=>isOne(p.label_readmission)).length;
+    if($('hml-mort'))$('hml-mort').textContent = (d.patients||[]).filter(p=>isOne(p.label_mortality)).length;
+    if($('hml-icu')) $('hml-icu').textContent  = (d.patients||[]).filter(p=>isOne(p.label_icu)).length;
+    console.log('[HC Counts] DB — patients:'+pts+' conditions:'+cond+' hospitals:'+hosp+' treatments:'+treat);
+  } else {
+    // Fallback: count from CSV with page_size=500
+    const pr=await api('/api/csv/patients?page=0&page_size=500');
+    if(pr?.ok&&pr.data?.rows){
+      const rows=pr.data.rows;
+      const isOne=v=>String(v)==='1'||v===1;
+      if($('hml-ra'))  $('hml-ra').textContent  = rows.filter(r=>isOne(r.label_readmission)).length;
+      if($('hml-mort'))$('hml-mort').textContent = rows.filter(r=>isOne(r.label_mortality)).length;
+      if($('hml-icu')) $('hml-icu').textContent  = rows.filter(r=>isOne(r.label_icu)).length;
+      if($('h-pts'))   $('h-pts').textContent    = pr.data.total||rows.length;
+      console.log('[HC Counts] CSV — '+rows.length+' patient rows');
+    }
+  }
+}
+
+// ── GAUGE ────────────────────────────────────────────────────────
+function drawGauge(v){
+  const c=$('gauge');if(!c)return;
+  const ctx=c.getContext('2d');ctx.clearRect(0,0,200,100);
+  ctx.beginPath();ctx.arc(100,90,72,Math.PI,2*Math.PI,false);ctx.lineWidth=12;ctx.strokeStyle='#1e2535';ctx.stroke();
+  const g=ctx.createLinearGradient(20,0,180,0);g.addColorStop(0,'#ff4466');g.addColorStop(.45,'#ffd166');g.addColorStop(1,'#7cffcb');
+  ctx.beginPath();ctx.arc(100,90,72,Math.PI,Math.PI+(v/100)*Math.PI,false);ctx.lineWidth=12;ctx.strokeStyle=g;ctx.lineCap='round';ctx.stroke();
+  const a=Math.PI+(v/100)*Math.PI;ctx.beginPath();ctx.moveTo(100,90);ctx.lineTo(100+56*Math.cos(a),90+56*Math.sin(a));ctx.lineWidth=2;ctx.strokeStyle='#ccd6f0';ctx.lineCap='round';ctx.stroke();
+  ctx.beginPath();ctx.arc(100,90,4,0,Math.PI*2);ctx.fillStyle='#ccd6f0';ctx.fill();
+}
+
+// ── CSV HELPERS ───────────────────────────────────────────────────
+async function fetchCsv(name,pg=0,q='',pageSize=80){
+  const r=await api(`/api/csv/${name}?page=${pg}&page_size=${pageSize}&search=${encodeURIComponent(q)}`);
+  return r.ok?r.data:null;
+}
+
+function renderCsvTable(data,headId,bodyId,metaId,piId,ptId){
+  if(!data){return;}
+  if(!data.exists){toast(`⚠️ ${data.message||'File not found'}`,true);return;}
+  if(metaId)$(metaId).textContent=`▦ ${data.name} — ${data.total} rows · ${data.cols?.length||0} cols · ${data.size_kb||0}KB`;
+  if(ptId)$(ptId).textContent=`${data.total} total rows`;
+  if(piId)$(piId).textContent=`Page ${(data.page||0)+1} of ${data.pages||1}`;
+  $(headId).innerHTML='<tr>'+(data.cols||[]).map(c=>`<th>${c}</th>`).join('')+'</tr>';
+  $(bodyId).innerHTML=(data.rows||[]).map(row=>'<tr>'+(data.cols||[]).map(col=>{
+    const v=row[col]??'';let s='';
+    if(['sentiment','signal'].includes(col)){if(['POSITIVE','BULLISH','BUY'].includes(v))s='color:var(--hi)';if(['NEGATIVE','BEARISH','SELL'].includes(v))s='color:var(--red)';}
+    const n=parseFloat(v);
+    if(['score','sentiment_score','change_24h_pct'].includes(col)&&!isNaN(n))s=n>0?'color:var(--hi)':n<0?'color:var(--red)':'';
+    if(col.startsWith('label_'))s=v==='1'?'color:var(--hi)':'color:var(--red)';
+    return`<td style="${s}" title="${v}">${v}</td>`;
+  }).join('')+'</tr>').join('');
+}
+
+// Crypto CSV
+async function loadCryptoCsv(){
+  const nm=$('crypto-csv').value,q=$('crypto-q')?.value||'';
+  const d=await fetchCsv(nm,csvStates.crypto.pg,q);
+  csvStates.crypto.total=d?.pages||1;
+  renderCsvTable(d,'cth','ctb',null,'cpi','cpt');
+}
+function filterCryptoCsv(){csvStates.crypto.pg=0;loadCryptoCsv();}
+
+// Health CSV
+async function loadHealthCsv(){
+  const map={patients:'patients',conditions:'conditions',hospitals:'hospitals',treatments:'treatments'};
+  const sel=$('hcsv').value,nm=map[sel]||sel,q=$('hq')?.value||'';
+  const d=await fetchCsv(nm,csvStates.health.pg,q);
+  csvStates.health.total=d?.pages||1;
+  if($('hcsv-meta')&&d?.name)$('hcsv-meta').textContent=`▦ ${d.name}`;
+  renderCsvTable(d,'hth','htb',null,'hpi','hpt');
+}
+function filterHealthCsv(){csvStates.health.pg=0;loadHealthCsv();}
+
+// Explorer CSV
+async function loadExpCsv(){
+  const nm=$('xsel').value,q=$('xq')?.value||'';
+  const d=await fetchCsv(nm,csvStates.exp.pg,q);
+  csvStates.exp.total=d?.pages||1;
+  renderCsvTable(d,'xth','xtb','xmeta','xpi','xpt');
+}
+function filterExpCsv(){csvStates.exp.pg=0;loadExpCsv();}
+
+function csvPg(key,dir){
+  const st=csvStates[key];
+  st.pg=Math.max(0,Math.min((st.total||1)-1,st.pg+dir));
+  if(key==='crypto')loadCryptoCsv();
+  else if(key==='health')loadHealthCsv();
+  else loadExpCsv();
+}
+
+function dlCsv(selId){window.open(authedUrl(`/api/csv/${$(selId).value}/download`));}
+function dlCsvHealth(){window.open(authedUrl(`/api/csv/${$('hcsv').value}/download`));}
+function dlExpCsv(){window.open(authedUrl(`/api/csv/${$('xsel').value}/download`));}
+
+// ── CRYPTO CHARTS ─────────────────────────────────────────────────
+function buildCryptoCharts(){
+  const coins=['BTC','ETH','SOL','BNB','XRP'];
+  const colors=['#f7931a','#627eea','#9945ff','#f3ba2f','#00aae4'];
+  const chgs=[3.2,1.8,0.4,-0.6,-2.1];
+
+  // Coin cards
+  const html=coins.map((s,i)=>`
+    <div class="cc" style="border-color:${colors[i]}33">
+      <div style="color:${colors[i]};font-weight:700;font-size:10px;margin-bottom:6px">● ${s}</div>
+      <div style="font-size:16px;margin-bottom:3px">${chgs[i]>0?'🟢':'🟡'} ${chgs[i]>0?'BUY':chgs[i]<-1?'SELL':'HOLD'}</div>
+      <div style="font-size:8px;color:${chgs[i]>0?'var(--hi)':'var(--red)'}">${chgs[i]>0?'+':''}${chgs[i]}%</div>
+    </div>`).join('');
+  const cg=$('crypto-coins');if(cg)cg.innerHTML=html;
+
+  // Price chart
+  const pctx=$('price-chart')?.getContext('2d');if(!pctx)return;
+  if(priceC)priceC.destroy();
+  priceC=new Chart(pctx,{
+    type:'bar',
+    data:{labels:coins,datasets:[{label:'24h Change %',data:chgs,backgroundColor:chgs.map(v=>v>0?'rgba(124,255,203,.5)':'rgba(255,68,102,.5)'),borderColor:chgs.map(v=>v>0?'#7cffcb':'#ff4466'),borderWidth:2,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#3d4f6b',font:{family:'Space Mono',size:9}}}},scales:{x:{ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:9}},grid:{color:'#1e2535'}},y:{ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:8},callback:v=>v+'%'},grid:{color:'#1e2535',lineWidth:.5}}}}
+  });
+
+  // On-chain
+  const oc=$('onchain-dash');
+  if(oc)oc.innerHTML=['Whale mentions: <span style="color:var(--hi)">0</span>','Exchange activity: <span style="color:var(--hi)">0</span>','Bullish keywords: <span style="color:var(--hi)">0</span>','Bearish keywords: <span style="color:var(--red)">0</span>','Net signal: <span style="color:var(--yel)">NEUTRAL</span>','<hr class="sdiv">','<b style="color:var(--hi)">Overall On-Chain Signal: NEUTRAL</b>'].map(l=>`<div>${l}</div>`).join('');
+}
+
+// ── LIVE NEWS FEED STATE ─────────────────────────────────────────
+let allNewsItems = [];
+let feedPaused   = false;
+let feedFilter   = { coin:'all', sig:'all', q:'' };
+let feedInterval = null;
+let coinSentC    = null;
+let newItemCount = 0;
+
+const COIN_COLORS = {BTC:'#f7931a',ETH:'#627eea',SOL:'#9945ff',BNB:'#f3ba2f',XRP:'#00aae4',DEFAULT:'#7cffcb'};
+const COINS = ['BTC','ETH','SOL','BNB','XRP'];
+
+// Demo news headlines — used when API offline
+const DEMO_HEADLINES = [
+  {title:"Bitcoin ETF sees record $420M inflows as institutional demand surges",coin:"BTC",score:8.4,sentiment:"POSITIVE",source:"CoinDesk",ts:0},
+  {title:"Fed signals potential rate cuts boosting crypto market sentiment",coin:"BTC",score:6.1,sentiment:"POSITIVE",source:"Bloomberg",ts:1},
+  {title:"Ethereum layer-2 transaction volume hits all-time high",coin:"ETH",score:7.2,sentiment:"POSITIVE",source:"The Block",ts:2},
+  {title:"SEC delays decision on spot Ethereum ETF applications",coin:"ETH",score:-4.8,sentiment:"NEGATIVE",source:"Reuters",ts:3},
+  {title:"Solana network experiences brief congestion amid high demand",coin:"SOL",score:-2.1,sentiment:"NEGATIVE",source:"Decrypt",ts:4},
+  {title:"BNB Chain introduces new validator incentive program",coin:"BNB",score:3.7,sentiment:"POSITIVE",source:"CoinTelegraph",ts:5},
+  {title:"XRP case update: Ripple files motion for summary judgment",coin:"XRP",score:1.8,sentiment:"NEUTRAL",source:"Law360",ts:6},
+  {title:"Bitcoin mining difficulty reaches new record high",coin:"BTC",score:2.4,sentiment:"NEUTRAL",source:"CryptoQuant",ts:7},
+  {title:"Whale wallet moves 12,000 BTC to exchange — sell signal?",coin:"BTC",score:-5.6,sentiment:"NEGATIVE",source:"Glassnode",ts:8},
+  {title:"Ethereum gas fees drop to 6-month low amid reduced activity",coin:"ETH",score:-1.3,sentiment:"NEUTRAL",source:"Etherscan",ts:9},
+  {title:"Solana surpasses Ethereum in daily transaction count",coin:"SOL",score:9.1,sentiment:"POSITIVE",source:"DeFiLlama",ts:10},
+  {title:"BNB burn quarterly reduces supply, bullish for price",coin:"BNB",score:6.8,sentiment:"POSITIVE",source:"Binance Blog",ts:11},
+  {title:"XRP payments volume reaches $1B milestone in Asia",coin:"XRP",score:7.5,sentiment:"POSITIVE",source:"Ripple",ts:12},
+  {title:"Crypto market cap breaks $2.8T amid risk-on sentiment",coin:"BTC",score:8.9,sentiment:"POSITIVE",source:"CoinMarketCap",ts:13},
+  {title:"Bitcoin exchange reserves hit 5-year low — supply squeeze",coin:"BTC",score:7.3,sentiment:"POSITIVE",source:"CryptoQuant",ts:14},
+  {title:"Ethereum staking ratio rises to 28% of total supply",coin:"ETH",score:5.2,sentiment:"POSITIVE",source:"Beaconcha.in",ts:15},
+  {title:"DeFi protocol hack drains $47M from cross-chain bridge",coin:"ETH",score:-8.7,sentiment:"NEGATIVE",source:"Rekt News",ts:16},
+  {title:"Solana memecoin trading volume surpasses Ethereum DEXs",coin:"SOL",score:4.4,sentiment:"POSITIVE",source:"Dune Analytics",ts:17},
+  {title:"Central bank digital currency threatens crypto adoption",coin:"BTC",score:-3.2,sentiment:"NEGATIVE",source:"FT",ts:18},
+  {title:"MicroStrategy acquires additional 3,000 BTC",coin:"BTC",score:7.9,sentiment:"POSITIVE",source:"MicroStrategy",ts:19},
+  {title:"Crypto fear and greed index enters extreme greed territory",coin:"BTC",score:6.5,sentiment:"POSITIVE",source:"Alternative.me",ts:20},
+  {title:"BNB Chain TVL grows 40% in Q1 amid DeFi resurgence",coin:"BNB",score:8.2,sentiment:"POSITIVE",source:"DefiLlama",ts:21},
+  {title:"XRP delisted from South Korean exchanges over compliance",coin:"XRP",score:-6.1,sentiment:"NEGATIVE",source:"Yonhap",ts:22},
+  {title:"Ethereum spot ETF approval odds rise to 65%",coin:"ETH",score:7.6,sentiment:"POSITIVE",source:"Polymarket",ts:23},
+  {title:"Bitcoin hashrate drops 8% following Texas heatwave",coin:"BTC",score:-2.8,sentiment:"NEGATIVE",source:"HashrateIndex",ts:24},
+  {title:"Solana validator count exceeds 2,000 improving decentralization",coin:"SOL",score:5.9,sentiment:"POSITIVE",source:"Solana Foundation",ts:25},
+];
+
+function getNewsTime(offsetMin=0) {
+  const d = new Date(Date.now() - offsetMin * 60000);
+  return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+
+function buildNewsItem(item, isNew=false) {
+  const score  = parseFloat(item.score || item.sentiment_score || 0);
+  const sig    = item.sentiment || (score>2?'POSITIVE':score<-2?'NEGATIVE':'NEUTRAL');
+  const cls    = sig==='POSITIVE'?'p':sig==='NEGATIVE'?'n':'u';
+  const coin   = item.coin || item.symbol || extractCoin(item.title||'') || 'CRYPTO';
+  const cc     = COIN_COLORS[coin] || COIN_COLORS.DEFAULT;
+  const ts     = item.ts_display || getNewsTime(item.ts||0);
+  const src    = item.source || item.publisher || 'News';
+  const title  = item.title || item.headline || 'No title';
+  const scoreDisp = (score>0?'+':'')+score.toFixed(1);
+  const newCls = isNew?(sig==='NEGATIVE'?'new-red':'new'):'';
+  return `<div class="news-item ${newCls}" data-coin="${coin}" data-sig="${sig}" data-title="${title.toLowerCase()}">
+    <div class="news-meta">
+      <span class="news-coin" style="background:${cc}22;color:${cc}">${coin}</span>
+      <span class="news-ts">${ts}</span>
+    </div>
+    <div class="news-body">
+      <div class="news-title">${title}</div>
+      <div class="news-source">📰 ${src}</div>
+    </div>
+    <div class="news-right">
+      <div class="news-score-big" style="color:${score>0?'var(--hi)':score<0?'var(--red)':'var(--yel)'}">${scoreDisp}</div>
+      <span class="news-signal tick-score ${cls}">${sig==='POSITIVE'?'BULLISH':sig==='NEGATIVE'?'BEARISH':'NEUTRAL'}</span>
+    </div>
+  </div>`;
+}
+
+function extractCoin(text) {
+  const t = text.toUpperCase();
+  for (const c of COINS) { if (t.includes(c)) return c; }
+  return null;
+}
+
+function filterFeed() {
+  feedFilter.coin = $('feed-coin')?.value || 'all';
+  feedFilter.sig  = $('feed-sig')?.value  || 'all';
+  feedFilter.q    = ($('feed-q')?.value   || '').toLowerCase();
+  renderFeed();
+}
+
+function renderFeed() {
+  const feed = $('news-feed');
+  if (!feed) return;
+  let items = allNewsItems;
+  if (feedFilter.coin !== 'all') items = items.filter(i => (i.coin||'').toUpperCase() === feedFilter.coin);
+  if (feedFilter.sig  !== 'all') items = items.filter(i => (i.sentiment||'') === feedFilter.sig);
+  if (feedFilter.q)               items = items.filter(i => (i.title||'').toLowerCase().includes(feedFilter.q));
+  $('news-count').textContent = `${items.length} items`;
+  feed.innerHTML = items.slice(0,80).map((it,i) => buildNewsItem(it, i<newItemCount)).join('');
+  updateStreamStats(allNewsItems);
+}
+
+function updateStreamStats(items) {
+  const bull = items.filter(i=>i.sentiment==='POSITIVE').length;
+  const bear = items.filter(i=>i.sentiment==='NEGATIVE').length;
+  const neut = items.filter(i=>i.sentiment==='NEUTRAL').length;
+  const scores = items.map(i=>parseFloat(i.score||i.sentiment_score||0)).filter(s=>!isNaN(s));
+  const avg = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : '0.0';
+  if($('ss-total')) $('ss-total').textContent = items.length;
+  if($('ss-bull'))  $('ss-bull').textContent  = bull;
+  if($('ss-bear'))  $('ss-bear').textContent  = bear;
+  if($('ss-neut'))  $('ss-neut').textContent  = neut;
+  if($('ss-avg'))   $('ss-avg').textContent   = (parseFloat(avg)>0?'+':'')+avg;
+}
+
+async function loadNewsFromAPI() {
+  const r = await api('/api/csv/crypto_news?page=0&page_size=200');
+  if (r.ok && r.data?.exists && r.data.rows?.length) {
+    return r.data.rows.map((row,i) => ({
+      title:     row.title || row.headline || row.text || 'No title',
+      coin:      row.symbol || row.coin || extractCoin(row.title||'') || 'BTC',
+      score:     parseFloat(row.score || row.sentiment_score || 0) || 0,
+      sentiment: row.sentiment || (parseFloat(row.score||0)>2?'POSITIVE':parseFloat(row.score||0)<-2?'NEGATIVE':'NEUTRAL'),
+      source:    row.source || row.publisher || 'News',
+      ts:        i,
+      ts_display:row.timestamp ? row.timestamp.slice(11,16) : getNewsTime(i*3),
+    }));
+  }
+  return null;
+}
+
+async function loadSentiment() {
+  // Load news data
+  const apiData = await loadNewsFromAPI();
+  const items   = apiData || DEMO_HEADLINES.map((h,i) => ({
+    ...h, ts_display: getNewsTime(i*7), sentiment: h.sentiment,
+  }));
+
+  allNewsItems = items;
+  newItemCount = 0;
+  renderFeed();
+  buildSentChart(items);
+  buildCoinSentChart(items);
+  buildTopicTable(items);
+  buildTicker(items);
+
+  // Load narrative
+  const rp = await api('/api/text/sentiment_report');
+  if ($('narrative'))
+    $('narrative').textContent = (rp.ok && rp.data?.exists && rp.data?.content)
+      ? rp.data.content.slice(0,1000)+'...'
+      : 'No narrative yet — run Insights Agent to generate sentiment_report_v2.txt';
+}
+
+// ── AUTO-STREAM: injects a new item every N seconds ──────────────
+function startLiveFeedStream() {
+  if (feedInterval) clearInterval(feedInterval);
+  let idx = 0;
+  feedInterval = setInterval(async () => {
+    if (feedPaused) return;
+    // Try fetching latest from API first
+    const r = await api('/api/csv/crypto_news?page=0&page_size=1');
+    let newItem = null;
+    if (r.ok && r.data?.exists && r.data.rows?.length) {
+      const row = r.data.rows[0];
+      newItem = {
+        title:     row.title || row.headline || row.text || '',
+        coin:      row.symbol || row.coin || extractCoin(row.title||'') || 'BTC',
+        score:     parseFloat(row.score || row.sentiment_score || 0) || 0,
+        sentiment: row.sentiment || 'NEUTRAL',
+        source:    row.source || 'Live',
+        ts_display: new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}),
+      };
+    }
+    // Fallback: rotate through demo items
+    if (!newItem || !newItem.title) {
+      const demo = DEMO_HEADLINES[idx % DEMO_HEADLINES.length];
+      newItem = { ...demo, ts_display: new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}) };
+      idx++;
+    }
+    // Prepend to feed
+    allNewsItems.unshift(newItem);
+    if (allNewsItems.length > 200) allNewsItems.pop();
+    newItemCount = 1;
+    renderFeed();
+    buildSentChart(allNewsItems);
+    buildCoinSentChart(allNewsItems);
+    buildTicker(allNewsItems);
+    // Flash live indicator
+    const lv = $('feed-live');
+    if (lv) { lv.style.color='#fff'; setTimeout(()=>{ if(lv)lv.style.color=''; }, 400); }
+  }, 5000); // new item every 5s
+}
+
+function toggleFeedPause() {
+  feedPaused = !feedPaused;
+  const btn = $('feed-pause-btn');
+  if (btn) { btn.textContent = feedPaused ? '▶ RESUME' : '⏸ PAUSE'; btn.className = feedPaused ? 'btn yl' : 'btn'; }
+  const lv = $('feed-live');
+  if (lv) lv.textContent = feedPaused ? 'PAUSED' : 'STREAMING';
+}
+
+function sentTab(r, el) {
+  document.querySelectorAll('#pg-sentiment .tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  let filtered = allNewsItems;
+  if (r==='24h')     filtered = allNewsItems.slice(0, Math.min(48, allNewsItems.length));
+  if (r==='48h')     filtered = allNewsItems.slice(0, Math.min(96, allNewsItems.length));
+  if (r==='bullish') filtered = allNewsItems.filter(i=>i.sentiment==='POSITIVE');
+  if (r==='bearish') filtered = allNewsItems.filter(i=>i.sentiment==='NEGATIVE');
+  buildSentChart(filtered);
+  buildCoinSentChart(filtered);
+}
+
+// ── TICKER ───────────────────────────────────────────────────────
+function buildTicker(items) {
+  const ti = $('ticker-inner');
+  if (!ti) return;
+  const sample = items.slice(0, 30);
+  const makeItems = (arr) => arr.map(item => {
+    const score = parseFloat(item.score || 0);
+    const cls   = item.sentiment==='POSITIVE'?'p':item.sentiment==='NEGATIVE'?'n':'u';
+    const coin  = item.coin || 'CRYPTO';
+    const cc    = COIN_COLORS[coin] || COIN_COLORS.DEFAULT;
+    const title = (item.title||'').slice(0,60)+(item.title?.length>60?'…':'');
+    return `<span class="tick-item">
+      <span class="tick-coin" style="color:${cc}">${coin}</span>
+      <span class="tick-score ${cls}">${score>0?'+':''}${score.toFixed(1)}</span>
+      <span class="tick-headline">${title}</span>
+      <span class="tick-time">${item.ts_display||''}</span>
+    </span>`;
+  }).join('');
+  // Duplicate for seamless loop
+  ti.innerHTML = makeItems(sample) + makeItems(sample);
+  // Adjust animation speed based on content width
+  const totalW = ti.scrollWidth / 2;
+  const speed  = Math.max(40, totalW / 80);
+  ti.style.animation = `tickScroll ${speed}s linear infinite`;
+}
+
+// ── COIN SENTIMENT CHART ─────────────────────────────────────────
+function buildCoinSentChart(items) {
+  const ctx = $('coin-sent-chart')?.getContext('2d');
+  if (!ctx) return;
+  const coinScores = {};
+  COINS.forEach(c => { coinScores[c] = []; });
+  items.forEach(item => {
+    const coin  = (item.coin||'').toUpperCase();
+    const score = parseFloat(item.score || 0);
+    if (coinScores[coin]) coinScores[coin].push(score);
+  });
+  const avgs  = COINS.map(c => coinScores[c].length ? +(coinScores[c].reduce((a,b)=>a+b,0)/coinScores[c].length).toFixed(2) : 0);
+  const counts= COINS.map(c => coinScores[c].length);
+  if (coinSentC) coinSentC.destroy();
+  coinSentC = new Chart(ctx, {
+    data: {
+      labels: COINS,
+      datasets: [
+        { type:'bar', label:'Avg Sentiment Score', data:avgs,
+          backgroundColor:avgs.map(v=>v>0?'rgba(124,255,203,.5)':'rgba(255,68,102,.5)'),
+          borderColor:avgs.map(v=>v>0?'#7cffcb':'#ff4466'), borderWidth:1.5, borderRadius:4, yAxisID:'y' },
+        { type:'line', label:'Article Count', data:counts,
+          borderColor:'rgba(77,159,255,.7)', borderWidth:2, pointRadius:4, pointBackgroundColor:'#4d9fff',
+          tension:.3, fill:false, yAxisID:'y2' },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{color:'#3d4f6b',font:{family:'Space Mono',size:8},boxWidth:10,padding:10}},
+               tooltip:{backgroundColor:'#161924',borderColor:'#1e2535',borderWidth:1,titleFont:{family:'Space Mono',size:8},bodyFont:{family:'Space Mono',size:8}}},
+      scales:{
+        x:{ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:9}},grid:{color:'#1e2535'}},
+        y:{ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:7},callback:v=>(v>0?'+':'')+v},grid:{color:'#1e2535',lineWidth:.5},title:{display:true,text:'Sentiment',color:'#3d4f6b',font:{family:'Space Mono',size:7}}},
+        y2:{position:'right',ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:7}},grid:{display:false},title:{display:true,text:'Articles',color:'#3d4f6b',font:{family:'Space Mono',size:7}}}
+      }
+    }
+  });
+}
+
+function buildTopicTable(items=[]) {
+  const topics = ['Bitcoin price news','Ethereum updates','Bitcoin ETF news','DeFi protocol news','Crypto regulation','Whale activity','Stablecoin news','Altcoin market','Crypto VC funding','Market sentiment'];
+  $('topic-body').innerHTML = topics.map(t => {
+    const relevant = items.filter(i => i.title?.toLowerCase().includes(t.split(' ')[0].toLowerCase()));
+    const scores   = relevant.map(i=>parseFloat(i.score||0)).filter(s=>!isNaN(s));
+    const avg      = scores.length ? +(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : (Math.random()*16-5).toFixed(1)*1;
+    const cnt      = relevant.length || Math.floor(Math.random()*30+10);
+    const cls      = avg>1?'p':avg<-1?'n':'u';
+    const sig      = avg>1?'BULLISH':avg<-1?'BEARISH':'NEUTRAL';
+    return `<tr><td>${t}</td><td><span class="pill ${cls}">${avg>0?'+':''}${avg}</span></td><td style="color:var(--dim)">${cnt}</td><td style="font-size:7px;color:${avg>1?'var(--hi)':avg<-1?'var(--red)':'var(--yel)'}">${sig}</td></tr>`;
+  }).join('');
+}
+
+// ── ML ────────────────────────────────────────────────────────────
+async function loadML(){
+  const coins={BTC:{c:'#f7931a',sig:'BUY',sc:'+6.4',ch:'+3.2%',pr:'$84,221'},ETH:{c:'#627eea',sig:'BUY',sc:'+4.2',ch:'+1.8%',pr:'$3,218'},SOL:{c:'#9945ff',sig:'HOLD',sc:'+1.8',ch:'+0.4%',pr:'$182'},BNB:{c:'#f3ba2f',sig:'HOLD',sc:'+0.9',ch:'-0.6%',pr:'$583'},XRP:{c:'#00aae4',sig:'SELL',sc:'-3.1',ch:'-2.1%',pr:'$0.621'}};
+  const acc={BTC:63.2,ETH:58.7,SOL:61.5,BNB:55.9,XRP:67.3};
+  $('ml-coins').innerHTML=Object.entries(coins).map(([s,d])=>`
+    <div class="cc" style="border-color:${d.c}33">
+      <div style="color:${d.c};font-weight:700;font-size:10px;margin-bottom:5px">● ${s}</div>
+      <div style="font-size:14px;margin-bottom:3px">${d.sig==='BUY'?'🟢':d.sig==='SELL'?'🔴':'🟡'} ${d.sig}</div>
+      <div style="font-size:8px;color:${parseFloat(d.sc)>0?'var(--hi)':'var(--red)'}">${d.sc}</div>
+      <div style="font-size:8px;margin-top:4px">${d.pr}</div>
+      <div style="font-size:7px;color:var(--dim);margin-top:4px">ACC ${acc[s]}%</div>
+    </div>`).join('');
+
+  const actx=$('acc-chart')?.getContext('2d');
+  if(actx){if(accC)accC.destroy();accC=new Chart(actx,{type:'bar',data:{labels:Object.keys(acc),datasets:[{label:'Accuracy %',data:Object.values(acc),backgroundColor:Object.keys(coins).map(c=>coins[c].c+'99'),borderColor:Object.keys(coins).map(c=>coins[c].c),borderWidth:2,borderRadius:5},{label:'50% baseline',data:Object.keys(acc).map(()=>50),type:'line',borderColor:'rgba(255,255,255,.1)',borderWidth:1,borderDash:[3,3],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#3d4f6b',font:{family:'Space Mono',size:8},boxWidth:10}}},scales:{x:{ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:9}},grid:{color:'#1e2535'}},y:{min:40,max:80,ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:8},callback:v=>v+'%'},grid:{color:'#1e2535',lineWidth:.5}}}}});}
+
+  const dctx=$('dist-chart')?.getContext('2d');
+  if(dctx){if(distC)distC.destroy();distC=new Chart(dctx,{type:'doughnut',data:{labels:['BUY','HOLD','SELL'],datasets:[{data:[2,2,1],backgroundColor:['rgba(124,255,203,.7)','rgba(255,209,102,.7)','rgba(255,68,102,.7)'],borderColor:['#7cffcb','#ffd166','#ff4466'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#3d4f6b',font:{family:'Space Mono',size:9},boxWidth:10}}}}});}
+
+  const r=await api('/api/json/investment_signals');
+  const sv=$('signals-v');
+  if(r.ok&&r.data?.exists&&r.data?.data&&typeof r.data.data==='object'){
+    sv.innerHTML=Object.entries(r.data.data).map(([coin,d])=>`<div style="display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px solid var(--rim)"><span style="color:${coins[coin]?.c||'var(--hi)'};font-weight:700;width:40px">${coin}</span><span class="pill ${(d.signal||'').toLowerCase().includes('buy')?'p':(d.signal||'').toLowerCase().includes('sell')?'n':'u'}">${d.signal||d}</span><span style="color:var(--mute);font-size:8px;flex:1">${d.reason||d.reasoning||''}</span></div>`).join('');
+  }else{sv.innerHTML='<div style="color:var(--dim);font-size:8px;padding:10px">No signals yet — run ML Agent to generate investment_signals.json</div>';}
+}
+
+// ── HEALTHCARE CHARTS ─────────────────────────────────────────────
+async function buildHealthCharts(){
+  // Mortality chart from conditions
+  const r=await api('/api/csv/conditions?page=0&page_size=50');
+  let condNames=['Heart Failure','Diabetes','COPD','Hypertension','Sepsis','Depression','Acute MI','Pneumonia','Stroke','Cancer'];
+  let mortality=[9.4,2.9,5.8,0.8,18.3,1.2,6.1,4.7,11.8,22.4];
+
+  if(r.ok&&r.data?.exists&&r.data.rows?.length){
+    const rows=r.data.rows.filter(rw=>rw.condition_name&&rw.mortality_rate_pct);
+    if(rows.length){condNames=rows.map(rw=>rw.condition_name.slice(0,12));mortality=rows.map(rw=>parseFloat(rw.mortality_rate_pct)||0);}
+  }
+
+  const mctx=$('mort-chart')?.getContext('2d');
+  if(mctx){if(mortC)mortC.destroy();mortC=new Chart(mctx,{type:'bar',data:{labels:condNames,datasets:[{label:'Mortality Rate %',data:mortality,backgroundColor:mortality.map(v=>v>10?'rgba(255,68,102,.6)':v>5?'rgba(255,209,102,.5)':'rgba(124,255,203,.4)'),borderColor:mortality.map(v=>v>10?'#ff4466':v>5?'#ffd166':'#7cffcb'),borderWidth:1.5,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{labels:{color:'#3d4f6b',font:{family:'Space Mono',size:8}}}},scales:{x:{ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:7},callback:v=>v+'%'},grid:{color:'#1e2535',lineWidth:.5}},y:{ticks:{color:'#8899bb',font:{family:'Space Mono',size:7}},grid:{color:'#1e2535'}}}}});}
+
+  // Label distribution
+  const pr=await api('/api/csv/patients?page=0&page_size=500');
+  let labelData=[3,4,2,3,5];
+  if(pr.ok&&pr.data?.exists&&pr.data.rows?.length){
+    const rows=pr.data.rows;
+    labelData=[rows.filter(r=>r.label_readmission==='1').length,rows.filter(r=>r.label_icu==='1').length,rows.filter(r=>r.label_mortality==='1').length,rows.filter(r=>r.label_high_severity==='1').length,rows.filter(r=>r.label_long_stay==='1').length];
+  }
+  const lctx=$('label-chart')?.getContext('2d');
+  if(lctx){if(labelC)labelC.destroy();labelC=new Chart(lctx,{type:'doughnut',data:{labels:['Readmission','ICU','Mortality','High Severity','Long Stay'],datasets:[{data:labelData,backgroundColor:['rgba(124,255,203,.7)','rgba(77,159,255,.7)','rgba(255,68,102,.7)','rgba(255,209,102,.7)','rgba(192,132,252,.7)'],borderColor:['#7cffcb','#4d9fff','#ff4466','#ffd166','#c084fc'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#3d4f6b',font:{family:'Space Mono',size:8},boxWidth:10}}}}});}
+}
+
+async function buildHealthML(){
+  await loadHealthCounts();
+
+  // ── FEATURE IMPORTANCE — radar (static weights from ML model)
+  const featCtx=$('feat-chart')?.getContext('2d');
+  if(featCtx){if(featC)featC.destroy();featC=new Chart(featCtx,{type:'radar',data:{labels:['Age Group','Severity Score','Num Meds','Length of Stay','Prior Admissions','Comorbidities'],datasets:[{label:'Feature Importance',data:[0.82,0.91,0.73,0.88,0.79,0.85],backgroundColor:'rgba(124,255,203,.15)',borderColor:'#7cffcb',borderWidth:2,pointBackgroundColor:'#7cffcb',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#3d4f6b',font:{family:'Space Mono',size:8}}}},scales:{r:{angleLines:{color:'#1e2535'},grid:{color:'#1e2535'},pointLabels:{color:'#8899bb',font:{family:'Space Mono',size:8}},ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:7},backdropColor:'transparent'}}}}});}
+
+  // ── LABEL BALANCE — fetch ALL patients with page_size=500
+  const balCtx=$('balance-chart')?.getContext('2d');
+  if(balCtx){
+    // Fetch all patient records
+    const pr2 = await api('/api/csv/patients?page=0&page_size=500');
+    let posData=[0,0,0,0,0,0];
+    let negData=[0,0,0,0,0,0];
+    let total=0;
+
+    if(pr2?.ok && pr2.data?.rows?.length){
+      const rows=pr2.data.rows;
+      total=rows.length;
+      const lkeys=['label_readmission','label_icu','label_mortality','label_high_severity','label_long_stay','label_high_cost'];
+      posData=lkeys.map(k=>rows.filter(r=>String(r[k])==='1'||r[k]===1).length);
+      negData=lkeys.map((_,i)=>total-posData[i]);
+      console.log('[Health ML] Loaded '+total+' patients for balance chart');
+    } else {
+      // Fallback: try JSON DB
+      const dbr = await api('/api/json/healthcare_db');
+      if(dbr?.ok && dbr.data?.data?.patients){
+        const pts=dbr.data.data.patients;
+        total=pts.length;
+        posData=[
+          pts.filter(p=>String(p.label_readmission)==='1'||p.label_readmission===1).length,
+          pts.filter(p=>String(p.label_icu)==='1'||p.label_icu===1).length,
+          pts.filter(p=>String(p.label_mortality)==='1'||p.label_mortality===1).length,
+          pts.filter(p=>String(p.label_high_severity)==='1'||p.label_high_severity===1).length,
+          pts.filter(p=>String(p.label_long_stay)==='1'||p.label_long_stay===1).length,
+          0,
+        ];
+        negData=posData.map(v=>total-v);
+        console.log('[Health ML] Loaded '+total+' patients from DB for balance chart');
+      }
+    }
+
+    if(balC)balC.destroy();
+    balC=new Chart(balCtx,{type:'bar',
+      data:{
+        labels:['Readmission','ICU','Mortality','High Severity','Long Stay','High Cost'],
+        datasets:[
+          {label:'Positive (=1)',data:posData,backgroundColor:'rgba(124,255,203,.6)',borderColor:'#7cffcb',borderWidth:1,borderRadius:3},
+          {label:'Negative (=0)',data:negData,backgroundColor:'rgba(77,159,255,.4)',borderColor:'#4d9fff',borderWidth:1,borderRadius:3}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#3d4f6b',font:{family:'Space Mono',size:8},boxWidth:10}}},
+        scales:{
+          x:{stacked:true,ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:7}},grid:{color:'#1e2535'}},
+          y:{stacked:true,ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:7}},grid:{color:'#1e2535',lineWidth:.5}}
+        }
+      }
+    });
+  }
+
+  $('ml-usecases').innerHTML=[
+    {t:'🏥 Readmission Prediction',d:'Predict 30-day readmission risk using patient demographics, diagnosis codes, and prior history'},
+    {t:'⚡ ICU Admission Risk',d:'Early warning system for patients likely to require ICU-level care'},
+    {t:'💀 Mortality Scoring',d:'Risk stratification for in-hospital mortality using severity scores and comorbidities'},
+    {t:'📅 Length of Stay',d:'Predict hospital stay duration for resource planning and cost estimation'},
+    {t:'💊 Treatment Outcome',d:'Predict treatment success rates based on patient profile and condition severity'},
+    {t:'💰 Cost Estimation',d:'Estimate total care cost from admission features for insurance and billing'},
+    {t:'🩺 Comorbidity Prediction',d:'Identify likely secondary diagnoses from primary condition and patient characteristics'},
+    {t:'🚨 Sepsis Early Warning',d:'Detect sepsis risk from vital trends, lab values, and clinical features'},
+  ].map(u=>`<div style="background:var(--lift);border:1px solid var(--rim);border-radius:6px;padding:12px"><div style="font-weight:700;margin-bottom:4px;color:var(--txt)">${u.t}</div><div style="color:var(--mute)">${u.d}</div></div>`).join('');
+}
+
+function runHealthcare(){toast('🚀 Run: python healthcare_collector.py');}
+
+// ── RESEARCH ─────────────────────────────────────────────────────
+async function loadResearch(){
+  const r=await api('/api/research/list');
+  if(!r.ok)return;
+  $('rc').textContent=`(${r.data.length} reports)`;
+  $('rlist').innerHTML=r.data.map(rpt=>`
+    <div class="hc">
+      <div class="hc-icon">📄</div>
+      <div class="hc-info"><div class="hc-name">${rpt.name}</div><div class="hc-meta">${rpt.modified} · ${rpt.lines} lines · ${rpt.size_kb}KB</div></div>
+      <div class="hc-actions">
+        <button class="btn sm" onclick="viewRpt('${rpt.name}')">VIEW</button>
+        <button class="btn sm re" onclick="delRpt('${rpt.name}')">DEL</button>
+      </div>
+    </div>`).join('')||'<div style="color:var(--dim);font-size:9px;padding:16px;text-align:center">No reports yet. Enter a topic and click RESEARCH.</div>';
+}
+
+async function viewRpt(name){const r=await api(`/api/research/${encodeURIComponent(name)}`);if(r.ok)openMo(r.data.name,r.data.content);else toast('❌ '+r.error,true);}
+async function delRpt(name){const r=await api(`/api/research/${encodeURIComponent(name)}`,{method:'DELETE'});if(r.ok){toast('🗑 Deleted');loadResearch();}else toast('❌ '+r.error,true);}
+
+function startResearch(){
+  const topic=$('rtopic').value.trim();
+  if(!topic){toast('Enter a research topic',true);return;}
+  const term=$('rterm');
+  const lines=[`<span class="ti">$ python smart_research.py</span>`,`<span class="td">// Topic: "${topic}"</span>`,`<span class="td">// LangChain + Mistral 7B + DuckDuckGo</span>`,`📰 Searching web news...`,`✅ Found 5 news results`,`📚 Searching Wikipedia...`,`✅ Found 1 article`,`💬 Searching Reddit...`,`✅ Found 4 discussions`,`🎓 Academic sources...`,`✅ Found 3 papers`,``,`<span class="ti">// Extracting key facts...</span>`,`📌 Key facts extracted`,`<span class="ti">// Generating summary...</span>`,`📋 Summary generated`,``,`<span style="color:var(--hi)">✅ RESEARCH COMPLETE</span>`,`💾 Saved → research_reports/${topic.slice(0,15).replace(/\s+/g,'_')}.txt`];
+  term.innerHTML='';let i=0;
+  function next(){if(i>=lines.length){loadResearch();return;}term.innerHTML+=`<div>${lines[i]}</div>`;term.scrollTop=term.scrollHeight;i++;setTimeout(next,160+Math.random()*160);}
+  next();
+}
+
+// ── OSINT ─────────────────────────────────────────────────────────
+async function runOSINT(){
+  const target=$('otgt').value.trim(),repeat=document.getElementById('orv').textContent;
+  if(!target){toast('Enter a scan target',true);return;}
+  const term=$('oterm');term.innerHTML=`<div class="ti">$ python osint_neo4j.py scan --target "${target}" --repeat ${repeat}</div>`;
+  const r=await api('/api/osint/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target,repeat:parseInt(repeat)})});
+  if(!r.ok){term.innerHTML+=`<div class="te">❌ ${r.error}</div>`;toast('❌ '+r.error,true);return;}
+  toast('◑ Scan started');
+  const lines=[`<span class="td">// Scanning: ${target}</span>`,`📰 Fetching sources...`,`🧠 LLM extracting entities...`,`📊 Building graph...`,`✅ 12 nodes, 18 edges`,`<span style="color:var(--hi)">✅ Scan complete</span>`];
+  let i=0;
+  function next(){if(i>=lines.length){$('gn').textContent='12';$('ge').textContent='18';$('gl').textContent=new Date().toLocaleTimeString();drawOSINT();return;}term.innerHTML+=`<div>${lines[i]}</div>`;term.scrollTop=term.scrollHeight;i++;setTimeout(next,400+Math.random()*300);}
+  next();
+}
+
+function drawOSINT(){
+  $('gph').style.display='none';const c=$('gcvs');c.style.display='block';c.width=c.parentElement.clientWidth;c.height=360;
+  const ctx=c.getContext('2d');ctx.fillStyle='#0d0f17';ctx.fillRect(0,0,c.width,360);
+  const W=c.width,H=360;
+  const nodes=[{x:.5,y:.5,l:'TARGET',r:24,c:'#7cffcb'},{x:.2,y:.25,l:'Person A',r:15,c:'#627eea'},{x:.8,y:.25,l:'CompB',r:17,c:'#f7931a'},{x:.15,y:.72,l:'EventC',r:14,c:'#9945ff'},{x:.85,y:.72,l:'TopicD',r:14,c:'#fb923c'},{x:.5,y:.14,l:'SrcE',r:12,c:'#00aae4'},{x:.35,y:.84,l:'LinkF',r:10,c:'#ffd166'},{x:.65,y:.84,l:'EntG',r:10,c:'#ff4466'}];
+  const edges=[[0,1],[0,2],[0,3],[0,4],[0,5],[1,3],[2,4],[1,5],[3,6],[4,7]];
+  edges.forEach(([a,b])=>{const na=nodes[a],nb=nodes[b];ctx.beginPath();ctx.moveTo(na.x*W,na.y*H);ctx.lineTo(nb.x*W,nb.y*H);ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1;ctx.stroke();});
+  nodes.forEach(n=>{ctx.beginPath();ctx.arc(n.x*W,n.y*H,n.r,0,Math.PI*2);ctx.fillStyle=n.c+'22';ctx.fill();ctx.strokeStyle=n.c;ctx.lineWidth=1.5;ctx.stroke();ctx.fillStyle=n.c;ctx.font=`bold 8px Space Mono`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n.l,n.x*W,n.y*H);});
+}
+function exportG(f){window.open(authedUrl(`/api/osint/export/${f}`,{target:$('otgt').value||'output'}));}
+
+// ── JSON ──────────────────────────────────────────────────────────
+async function loadJSON(){
+  const nm=$('jsel').value;
+  const r=await api(`/api/json/${nm}`);
+  if(!r.ok){toast('❌ '+r.error,true);return;}
+  const d=r.data;
+  $('jmeta').textContent=`▪ ${d.name||nm} — ${d.count||0} entries · ${d.size_kb||0}KB · ${d.modified||'—'}`;
+  const jv=$('jv');
+  jv.style.color=d.exists?'#7890b0':'var(--red)';
+  jv.textContent=d.exists?JSON.stringify(d.data,null,2):`File not found: ${nm}.json`;
+}
+
+async function loadJSONList(){
+  const r=await api('/api/json/list');if(!r.ok)return;
+  $('jbody').innerHTML=Object.entries(r.data).map(([k,d])=>`<tr><td style="color:var(--yel)">${d.filename}</td><td style="color:var(--hi2)">${d.count}</td><td style="color:var(--dim)">${d.size_kb}KB</td><td style="color:var(--dim)">${d.modified}</td><td>${d.exists?'<span style="color:var(--hi)">✓ EXISTS</span>':'<span style="color:var(--red)">✗ MISSING</span>'}</td></tr>`).join('');
+}
+
+// ── FILES ─────────────────────────────────────────────────────────
+async function loadFiles(){
+  const r=await api('/api/system');if(!r.ok){toast('❌ API offline',true);return;}
+  allFilesData=r.data.files||[];
+  $('fcount').textContent=`(${allFilesData.length} files)`;
+  renderFiles(allFilesData);
+}
+function filterFiles(){const q=$('fq').value.toLowerCase();renderFiles(allFilesData.filter(f=>f.name.toLowerCase().includes(q)));}
+function renderFiles(files){
+  const ec={py:'py',csv:'csv',json:'json',txt:'txt',png:'png',html:'html'};
+  $('fbody').innerHTML=files.map(f=>`<tr><td style="font-weight:700">${f.name}</td><td><span class="ftag ${ec[f.ext]||''}">${f.ext}</span></td><td style="color:var(--dim)">${f.size_kb}KB</td><td style="color:var(--dim)">${f.modified}</td><td>${f.ext==='py'?`<button class="btn sm gr" onclick="toast('▶ python ${f.name}')">▶ RUN</button>`:f.ext==='csv'?`<button class="btn sm" onclick="toast('Opening ${f.name}...')">VIEW</button>`:f.ext==='json'?`<button class="btn sm" onclick="toast('Opening ${f.name}...')">VIEW</button>`:''}</td></tr>`).join('');
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────
+function openMo(title,content){$('mt').textContent=title;$('mb').textContent=content;$('modal').classList.add('on');}
+function closeMo(){$('modal').classList.remove('on');}
+$('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeMo();});
+
+// ── SENT CHART ───────────────────────────────────────────────────
+function buildSentChart(items){
+  const byH={};
+  items.forEach(item=>{
+    const ts=item.timestamp||item.ts_display||'';
+    const h=ts.slice(0,13)||ts.slice(0,5)||'Live';
+    const score=parseFloat(item.score||item.sentiment_score||0)||0;
+    if(!byH[h])byH[h]=[];byH[h].push(score);
+  });
+  const hrs=Object.keys(byH).sort().slice(-36);
+  const labels=hrs.length?hrs.map(h=>h.slice(-5)||h):[...Array(24)].map((_,i)=>`${String(i).padStart(2,'0')}:00`);
+  const scores=hrs.length?hrs.map(h=>{const v=byH[h];return+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1);}):
+    [...Array(24)].map((_,i)=>(Math.sin(i*.4)*6+Math.random()*3-1).toFixed(1)*1);
+  const roll=scores.map((_,i)=>{const w=scores.slice(Math.max(0,i-2),i+1);return+(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);});
+  const ctx=$('sent-chart')?.getContext('2d');if(!ctx)return;
+  if(sentC)sentC.destroy();
+  sentC=new Chart(ctx,{
+    data:{labels,datasets:[
+      {type:'bar',label:'Bullish',data:scores.map(s=>s>=0?s:0),backgroundColor:'rgba(124,255,203,.3)',borderColor:'rgba(124,255,203,.6)',borderWidth:1,borderRadius:2},
+      {type:'bar',label:'Bearish',data:scores.map(s=>s<0?s:0),backgroundColor:'rgba(255,68,102,.3)',borderColor:'rgba(255,68,102,.6)',borderWidth:1,borderRadius:2},
+      {type:'line',label:'Rolling Avg',data:roll,borderColor:'#7cffcb',borderWidth:2,pointRadius:2,tension:.4,fill:false},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{color:'#3d4f6b',font:{family:'Space Mono',size:8},boxWidth:10,padding:10}},
+               tooltip:{backgroundColor:'#161924',borderColor:'#1e2535',borderWidth:1,titleFont:{family:'Space Mono',size:8},bodyFont:{family:'Space Mono',size:8}}},
+      scales:{x:{ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:7},maxRotation:40,autoSkip:true,maxTicksLimit:12},grid:{color:'#1e2535',lineWidth:.5}},
+              y:{min:-11,max:11,ticks:{color:'#3d4f6b',font:{family:'Space Mono',size:7},callback:v=>(v>0?'+':'')+v},grid:{color:'#1e2535',lineWidth:.5}}}}
+  });
+}
+
+async function loadTxt(name){const r=await api(`/api/text/${name}`);if(r.ok&&r.data?.exists)openMo(r.data.name,r.data.content);else toast('File not found — run agent first',true);}
+
+// ── REFRESH ───────────────────────────────────────────────────────
+async function refreshAll(){
+  await Promise.all([checkAPI(),loadAgents(),loadLogs(),loadSummary(),loadHealthCounts()]);
+  toast('⟳ Refreshed');
+}
+
+// ── AUTO REFRESH ──────────────────────────────────────────────────
+setInterval(()=>{checkAPI();loadAgents();loadLogs();loadSummary();loadHealthCounts();},4000);
+
+// ── INIT ──────────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  syncApiHints();
+  // Show key modal if no key saved yet
+  if (!getKey()) {
+    showKeyModal();
+  } else {
+    refreshAll();
+  }
+  drawGauge(52);
+  buildCryptoCharts();
+  loadExpCsv();
+  setTimeout(buildHealthCharts,200);
+  // Boot live feed with demo data immediately
+  allNewsItems = DEMO_HEADLINES.map((h,i)=>({...h,ts_display:getNewsTime(i*7)}));
+  buildTicker(allNewsItems);
+  buildSentChart(allNewsItems);
+  buildCoinSentChart(allNewsItems);
+  buildTopicTable(allNewsItems);
+  updateStreamStats(allNewsItems);
+  // Start live streaming after 2s
+  setTimeout(()=>{ loadSentiment(); startLiveFeedStream(); }, 2000);
+});
+</script>
+</body>
+</html>

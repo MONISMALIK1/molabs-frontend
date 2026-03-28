@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/",           "destination": "/index.html" },
+    { "source": "/v2",         "destination": "/v2.html" },
+    { "source": "/healthcare", "destination": "/healthcare.html" },
+    { "source": "/medsafe",    "destination": "/medsafe.html" }
+  ]
+}

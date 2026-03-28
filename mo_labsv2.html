@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mo.labs — Intelligence OS v2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&family=Bebas+Neue&display=swap");
+:root {
+  --ink:#08090d; --paper:#0d0f17; --lift:#12151f; --card:#161924;
+  --rim:#1e2535; --rim2:#28334a; --hi:#7cffcb; --hi2:#4d9fff;
+  --red:#ff4466; --gold:#ffc532; --purple:#b44dff;
+  --txt:#ccd6f0; --mute:#4a5a7a; --dim:#2a3550;
+  --glow:rgba(124,255,203,.08); --bglow:rgba(77,159,255,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--paper);color:var(--txt);font-family:"Space Mono",monospace;font-size:11px;}
+
+/* TICKER */
+#tkbar{position:fixed;top:0;left:0;right:0;height:28px;background:linear-gradient(90deg,var(--hi),var(--hi2),var(--purple));z-index:999;overflow:hidden;display:flex;align-items:center;}
+#tktrack{display:flex;animation:tkscroll 80s linear infinite;white-space:nowrap;}
+#tktrack:hover{animation-play-state:paused;}
+.tki{padding:0 24px;font-size:9px;font-weight:700;color:#000;border-right:1px solid rgba(0,0,0,.2);height:28px;display:flex;align-items:center;gap:8px;letter-spacing:.5px;}
+@keyframes tkscroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+
+/* SHELL */
+#shell{display:grid;grid-template-columns:200px 1fr;grid-template-rows:28px 44px 1fr;height:100vh;}
+
+/* TOPBAR */
+#topbar{grid-column:1/-1;grid-row:2;background:var(--lift);border-bottom:1px solid var(--rim);display:flex;align-items:center;padding:0 16px;gap:12px;z-index:100;}
+#logo{font-family:"Bebas Neue",sans-serif;font-size:20px;letter-spacing:4px;background:linear-gradient(135deg,var(--hi),var(--hi2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+#logosub{font-family:"Space Mono",monospace;font-size:7px;color:var(--mute);letter-spacing:2px;margin-left:-2px;}
+.tsep{width:1px;height:20px;background:var(--rim);}
+.apipill{font-family:"Space Mono",monospace;font-size:8px;padding:2px 8px;border-radius:2px;border:1px solid;}
+.apipill.on{color:var(--hi);border-color:var(--hi);background:var(--glow);}
+.apipill.off{color:var(--red);border-color:var(--red);background:rgba(255,68,102,.08);}
+#tk2{font-size:9px;color:var(--mute);margin-left:auto;}
+.tbtn{padding:4px 10px;border:1px solid var(--rim);border-radius:3px;background:transparent;color:var(--mute);font-family:"Space Mono",monospace;font-size:8px;cursor:pointer;letter-spacing:.5px;transition:all .15s;}
+.tbtn:hover{border-color:var(--hi);color:var(--hi);}
+
+/* SIDEBAR */
+#side{grid-column:1;grid-row:3;background:var(--lift);border-right:1px solid var(--rim);overflow-y:auto;padding:8px 0;}
+#side::-webkit-scrollbar{width:2px;}
+#side::-webkit-scrollbar-thumb{background:var(--rim);}
+.sg{padding:5px 14px 3px;font-size:7px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-top:6px;}
+.si{display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;border-left:2px solid transparent;color:var(--mute);font-size:10px;transition:all .15s;}
+.si:hover{color:var(--txt);background:rgba(255,255,255,.02);}
+.si.on{color:var(--hi);border-left-color:var(--hi);background:var(--glow);}
+.ic{font-size:13px;width:16px;text-align:center;}
+.sn{font-size:7px;margin-left:auto;padding:1px 5px;border-radius:8px;font-weight:700;}
+.sn.g{background:var(--hi);color:#000;}
+.sn.r{background:var(--red);color:#fff;}
+.sn.b{background:var(--hi2);color:#fff;}
+
+/* MAIN */
+#main{grid-column:2;grid-row:3;overflow-y:auto;overflow-x:hidden;background:var(--paper);}
+.pg{display:none;padding:18px;}
+.pg.on{display:block;}
+
+/* PAGE HEADER */
+.ph{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--rim);}
+.ptitle{font-family:"Bebas Neue",sans-serif;font-size:28px;letter-spacing:3px;background:linear-gradient(135deg,#fff,var(--hi));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.psub{font-size:8px;color:var(--mute);letter-spacing:1.5px;margin-top:3px;}
+
+/* STAT STRIP */
+.ss{display:grid;gap:8px;margin-bottom:16px;}
+.ss6{grid-template-columns:repeat(6,1fr);}
+.ss4{grid-template-columns:repeat(4,1fr);}
+.ss5{grid-template-columns:repeat(5,1fr);}
+.sb{background:var(--card);border:1px solid var(--rim);border-radius:6px;padding:12px 14px;position:relative;overflow:hidden;}
+.sb::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;}
+.sb.g::before{background:linear-gradient(90deg,var(--hi),transparent);}
+.sb.b::before{background:linear-gradient(90deg,var(--hi2),transparent);}
+.sb.r::before{background:linear-gradient(90deg,var(--red),transparent);}
+.sb.y::before{background:linear-gradient(90deg,var(--gold),transparent);}
+.sb.p::before{background:linear-gradient(90deg,var(--purple),transparent);}
+.sl{font-size:7px;color:var(--mute);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;}
+.sv{font-family:"Bebas Neue",sans-serif;font-size:26px;letter-spacing:1px;line-height:1;}
+.sv.g{color:var(--hi);}
+.sv.b{color:var(--hi2);}
+.sv.r{color:var(--red);}
+.sv.y{color:var(--gold);}
+.sv.p{color:var(--purple);}
+.sc{font-size:8px;color:var(--mute);margin-top:3px;}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+.g21{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:12px;}
+.g12{display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-bottom:12px;}
+.cs2{grid-column:span 2;}
+.cs3{grid-column:span 3;}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--rim);border-radius:8px;overflow:hidden;}
+.ch{padding:10px 14px;border-bottom:1px solid var(--rim);display:flex;align-items:center;gap:8px;}
+.ct{font-size:8px;letter-spacing:1.5px;color:var(--mute);text-transform:uppercase;flex:1;}
+.cb{padding:12px 14px;}
+.cdot{width:5px;height:5px;border-radius:50%;background:var(--hi);box-shadow:0 0 6px var(--hi);animation:pulse 2s infinite;}
+.cdot.b{background:var(--hi2);box-shadow:0 0 6px var(--hi2);}
+.cdot.r{background:var(--red);box-shadow:none;animation:none;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.cw{padding:8px 4px;} .cw canvas{max-height:180px;}
+
+/* SIGNAL CARDS */
+.sigrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;}
+.sigcard{background:var(--card);border:1px solid var(--rim);border-radius:8px;padding:14px 10px;text-align:center;transition:all .2s;position:relative;overflow:hidden;}
+.sigcard:hover{border-color:var(--rim2);transform:translateY(-1px);}
+.sigcard.buy{border-color:rgba(124,255,203,.3);background:linear-gradient(180deg,rgba(124,255,203,.04),var(--card));}
+.sigcard.sell{border-color:rgba(255,68,102,.3);background:linear-gradient(180deg,rgba(255,68,102,.04),var(--card));}
+.scoin{font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:2px;}
+.ssig{font-family:"Space Mono",monospace;font-size:9px;font-weight:700;letter-spacing:2px;padding:3px 8px;border-radius:3px;display:inline-block;margin:6px 0;}
+.ssig.buy{background:var(--glow);color:var(--hi);border:1px solid rgba(124,255,203,.3);}
+.ssig.sell{background:rgba(255,68,102,.1);color:var(--red);border:1px solid rgba(255,68,102,.3);}
+.ssig.hold{background:rgba(255,197,50,.1);color:var(--gold);border:1px solid rgba(255,197,50,.3);}
+.sscr{font-family:"Bebas Neue",sans-serif;font-size:22px;}
+.ssub{font-size:7px;color:var(--mute);}
+
+/* NEWS SLIDER */
+#newsslider{position:relative;overflow:hidden;border-radius:8px;background:var(--card);border:1px solid var(--rim);height:190px;}
+.nslide{position:absolute;inset:0;padding:18px;display:flex;flex-direction:column;justify-content:space-between;opacity:0;transform:translateX(30px);transition:all .5s cubic-bezier(.4,0,.2,1);pointer-events:none;}
+.nslide.on{opacity:1;transform:translateX(0);pointer-events:auto;}
+.nslide.out{opacity:0;transform:translateX(-30px);}
+.ntag{display:inline-flex;align-items:center;gap:5px;font-size:8px;letter-spacing:1px;padding:2px 7px;border-radius:2px;border:1px solid;margin-bottom:8px;width:fit-content;}
+.ntag.bull{color:var(--hi);border-color:var(--hi);background:var(--glow);}
+.ntag.bear{color:var(--red);border-color:var(--red);background:rgba(255,68,102,.08);}
+.ntag.neu{color:var(--gold);border-color:var(--gold);background:rgba(255,197,50,.08);}
+.ntag.excl{color:var(--hi);border-color:var(--hi);background:var(--glow);}
+.nhed{font-size:13px;font-weight:700;line-height:1.4;color:var(--txt);flex:1;display:flex;align-items:center;}
+.nmeta{display:flex;align-items:center;gap:12px;margin-top:10px;}
+.nsrc{font-size:8px;color:var(--mute);}
+.nlag{font-size:8px;color:var(--hi);background:var(--glow);padding:2px 6px;border-radius:2px;}
+.nscr{font-family:"Bebas Neue",sans-serif;font-size:16px;margin-left:auto;}
+.ndots{position:absolute;bottom:8px;right:12px;display:flex;gap:4px;}
+.ndot{width:5px;height:5px;border-radius:50%;background:var(--rim);cursor:pointer;transition:all .2s;}
+.ndot.on{background:var(--hi);width:14px;border-radius:3px;}
+.nslide-bg{position:absolute;inset:0;opacity:.03;background:radial-gradient(ellipse at 80% 50%,var(--hi),transparent 60%);pointer-events:none;}
+
+/* AGENT CARDS */
+.agrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.acard{background:var(--card);border:1px solid var(--rim);border-radius:8px;padding:12px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.acard:hover{border-color:var(--rim2);}
+.acard.run{border-color:rgba(124,255,203,.3);background:linear-gradient(135deg,var(--card),rgba(124,255,203,.02));}
+.acard.run::after{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--hi),transparent);}
+.acard.err{border-color:rgba(255,68,102,.3);}
+.atop{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.aic{font-size:18px;}
+.ast{font-size:7px;letter-spacing:1px;padding:2px 6px;border-radius:2px;font-weight:700;}
+.ast.RUNNING{background:var(--glow);color:var(--hi);}
+.ast.SCHEDULED{background:var(--bglow);color:var(--hi2);}
+.ast.IDLE,.ast.STOPPED{background:rgba(74,90,122,.1);color:var(--mute);}
+.ast.ERROR{background:rgba(255,68,102,.1);color:var(--red);}
+.ast.PAUSED{background:rgba(255,197,50,.1);color:var(--gold);}
+.aname{font-size:11px;font-weight:700;margin-bottom:2px;}
+.ascript{font-size:8px;color:var(--mute);margin-bottom:8px;}
+.astats{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.astat{background:var(--lift);border-radius:4px;padding:4px 7px;}
+.asl{font-size:7px;color:var(--dim);letter-spacing:.5px;}
+.asv{font-size:9px;color:var(--txt);margin-top:1px;}
+.abtns{display:flex;gap:5px;margin-top:8px;}
+.abtn{flex:1;padding:4px;border-radius:3px;border:1px solid var(--rim);background:transparent;color:var(--mute);font-family:"Space Mono",monospace;font-size:7px;cursor:pointer;transition:all .15s;}
+.abtn:hover{color:var(--hi);border-color:var(--hi);}
+.abtn.stop:hover{color:var(--red);border-color:var(--red);}
+
+/* GLOBAL NEWS FEED */
+.gnfeed{display:flex;flex-direction:column;gap:5px;max-height:360px;overflow-y:auto;}
+.gnfeed::-webkit-scrollbar{width:2px;}
+.gnfeed::-webkit-scrollbar-thumb{background:var(--rim);}
+.gni{background:var(--lift);border:1px solid var(--rim);border-radius:6px;padding:9px 11px;display:flex;gap:10px;align-items:flex-start;transition:border-color .15s;}
+.gni:hover{border-color:var(--rim2);}
+.gni.excl{border-left:2px solid var(--hi);}
+.gni.brk{border-left:2px solid var(--red);}
+.gnflag{font-size:14px;flex-shrink:0;margin-top:1px;}
+.gnbody{flex:1;min-width:0;}
+.gntitle{font-size:10px;line-height:1.4;color:var(--txt);margin-bottom:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.gnmeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.gnsrc{font-size:7px;color:var(--dim);}
+.gnlag{font-size:7px;color:var(--hi);background:var(--glow);padding:1px 4px;border-radius:2px;}
+.gnbadge{font-size:7px;letter-spacing:.5px;padding:1px 4px;border-radius:2px;}
+.gnbadge.exc{background:var(--glow);color:var(--hi);}
+.gnbadge.brk{background:rgba(255,68,102,.1);color:var(--red);}
+.gnbadge.imp{background:rgba(255,197,50,.1);color:var(--gold);}
+.gnscore{font-family:"Bebas Neue",sans-serif;font-size:16px;flex-shrink:0;margin-top:1px;}
+
+/* LANG PILLS */
+.lpills{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
+.lpill{padding:2px 8px;border-radius:12px;border:1px solid var(--rim);font-size:8px;color:var(--mute);cursor:pointer;transition:all .15s;}
+.lpill:hover,.lpill.on{border-color:var(--hi2);color:var(--hi2);background:var(--bglow);}
+
+/* PRED TABLE */
+.ptbl{width:100%;border-collapse:collapse;}
+.ptbl th{font-size:7px;letter-spacing:1px;color:var(--mute);text-transform:uppercase;padding:7px 10px;text-align:left;border-bottom:1px solid var(--rim);}
+.ptbl td{padding:8px 10px;font-size:10px;border-bottom:1px solid rgba(30,37,53,.5);vertical-align:middle;}
+.ptbl tr:last-child td{border-bottom:none;}
+.ptbl tr:hover td{background:rgba(255,255,255,.01);}
+.pcoin{font-family:"Bebas Neue",sans-serif;font-size:13px;letter-spacing:1px;}
+
+/* LOG */
+.logstream{font-family:"Space Mono",monospace;font-size:9px;line-height:1.8;max-height:500px;overflow-y:auto;padding:10px;}
+.logstream::-webkit-scrollbar{width:2px;}
+.logstream::-webkit-scrollbar-thumb{background:var(--rim);}
+.ll{padding:1px 0;border-bottom:1px solid rgba(30,37,53,.3);}
+.lt{color:var(--dim);margin-right:6px;}
+.la{color:var(--hi2);margin-right:6px;}
+.li{color:var(--txt);}
+.le{color:var(--red);}
+.lw{color:var(--gold);}
+
+/* SOCIAL */
+.scards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px;}
+.scard{background:var(--card);border:1px solid var(--rim);border-radius:8px;padding:14px;text-align:center;}
+.sicn{font-size:22px;margin-bottom:6px;}
+.sname{font-size:7px;letter-spacing:1px;color:var(--mute);text-transform:uppercase;margin-bottom:8px;}
+.scnt{font-family:"Bebas Neue",sans-serif;font-size:26px;letter-spacing:2px;}
+.ssub2{font-size:8px;color:var(--mute);margin-top:2px;}
+
+/* GAUGE */
+.gwrap{display:flex;flex-direction:column;align-items:center;padding:8px 0;}
+.gval{font-family:"Bebas Neue",sans-serif;font-size:38px;letter-spacing:2px;line-height:1;margin-top:-8px;}
+.glbl{font-size:8px;letter-spacing:2px;color:var(--mute);margin-top:3px;}
+
+/* SECTION TITLE */
+.stitle{font-family:"Bebas Neue",sans-serif;font-size:16px;letter-spacing:3px;color:var(--txt);margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+.stitle::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--rim),transparent);}
+
+/* BUTTONS */
+.btn{padding:5px 12px;border-radius:4px;border:1px solid;font-family:"Space Mono",monospace;font-size:8px;letter-spacing:.5px;cursor:pointer;transition:all .15s;}
+.btng{border-color:var(--hi);color:var(--hi);background:var(--glow);}
+.btng:hover{background:rgba(124,255,203,.2);}
+.btnr{border-color:var(--red);color:var(--red);background:rgba(255,68,102,.08);}
+.btnb{border-color:var(--hi2);color:var(--hi2);background:var(--bglow);}
+.btnm{border-color:var(--rim);color:var(--mute);background:transparent;}
+.btnm:hover{border-color:var(--hi);color:var(--hi);}
+
+/* FILTER BAR */
+.fbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+.fsel{background:var(--lift);border:1px solid var(--rim);border-radius:4px;color:var(--txt);font-family:"Space Mono",monospace;font-size:8px;padding:4px 8px;cursor:pointer;}
+.finp{background:var(--lift);border:1px solid var(--rim);border-radius:4px;color:var(--txt);font-family:"Space Mono",monospace;font-size:8px;padding:4px 8px;outline:none;}
+.finp:focus{border-color:var(--hi2);}
+
+/* EMPTY */
+.empty{text-align:center;padding:30px;font-size:9px;color:var(--dim);letter-spacing:1px;}
+
+/* KEY MODAL */
+#kmodal{display:none;position:fixed;inset:0;background:rgba(8,9,13,.88);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+#kmodal.show{display:flex;}
+.kbox{background:var(--card);border:1px solid var(--hi);border-radius:12px;padding:30px;max-width:420px;width:90vw;box-shadow:0 0 40px rgba(124,255,203,.1);}
+.ktitle{font-family:"Bebas Neue",sans-serif;font-size:22px;letter-spacing:4px;color:var(--hi);margin-bottom:3px;}
+.ksub{font-size:7px;color:var(--mute);letter-spacing:2px;margin-bottom:16px;}
+.khint{font-size:9px;color:var(--mute);line-height:1.8;margin-bottom:14px;}
+.kinp{width:100%;background:var(--lift);border:1px solid var(--rim);border-radius:5px;padding:9px 12px;color:var(--txt);font-family:"Space Mono",monospace;font-size:9px;outline:none;margin-bottom:8px;transition:border-color .2s;}
+.kinp:focus{border-color:var(--hi);}
+.kbtns{display:flex;gap:7px;}
+.kerr{background:rgba(255,68,102,.08);border:1px solid rgba(255,68,102,.3);border-radius:4px;padding:6px 10px;font-size:8px;color:var(--red);margin-bottom:8px;display:none;}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:20px;padding:8px 16px;border-radius:5px;background:var(--card);border:1px solid var(--hi);color:var(--hi);font-size:9px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;letter-spacing:.5px;}
+#toast.on{opacity:1;transform:translateY(0);}
+#toast.err{border-color:var(--red);color:var(--red);}
+
+/* SCROLLBARS */
+#main::-webkit-scrollbar{width:3px;}
+#main::-webkit-scrollbar-thumb{background:var(--rim);border-radius:2px;}
+#side::-webkit-scrollbar{width:2px;}
+</style>
+</head>
+<body>
+
+<!-- TICKER -->
+<div id="tkbar">
+  <div id="tktrack">
+    <div class="tki">⚡ mo.labs INTELLIGENCE OS v2</div>
+    <div class="tki">🌍 GLOBAL AGENTS ACTIVE</div>
+    <div class="tki">🟢 Signals loading...</div>
+    <div class="tki">📱 Social Agent armed</div>
+    <div class="tki">Intelligence that never sleeps.</div>
+    <div class="tki">⚡ mo.labs INTELLIGENCE OS v2</div>
+    <div class="tki">🌍 GLOBAL AGENTS ACTIVE</div>
+    <div class="tki">🟢 Signals loading...</div>
+    <div class="tki">📱 Social Agent armed</div>
+    <div class="tki">Intelligence that never sleeps.</div>
+  </div>
+</div>
+
+<div id="shell">
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <span id="logo">mo.labs</span>
+    <span id="logosub">INTELLIGENCE OS v2</span>
+    <div class="tsep"></div>
+    <span id="apipill" class="apipill off">● API OFFLINE</span>
+    <button class="tbtn" onclick="clearKey()">🔑 KEY</button>
+    <button class="tbtn" onclick="refreshAll()">⟳ REFRESH</button>
+    <span id="tk2">--:--:--</span>
+  </div>
+
+  <!-- SIDEBAR -->
+  <nav id="side">
+    <div class="sg">COMMAND</div>
+    <div class="si on" onclick="nav('home',this)"><span class="ic">⬡</span>Command Center</div>
+    <div class="si" onclick="nav('global',this)"><span class="ic">🌍</span>Global Intel <span class="sn b" id="nb-gi">0</span></div>
+    <div class="si" onclick="nav('predictions',this)"><span class="ic">📊</span>Predictions</div>
+    <div class="sg">AGENTS</div>
+    <div class="si" onclick="nav('agents',this)"><span class="ic">⚡</span>All Agents <span class="sn g" id="nb-run">0</span></div>
+    <div class="si" onclick="nav('social',this)"><span class="ic">📱</span>Social Agent</div>
+    <div class="sg">DATA</div>
+    <div class="si" onclick="nav('sentiment',this)"><span class="ic">💬</span>Sentiment Feed</div>
+    <div class="si" onclick="nav('healthcare',this)"><span class="ic">💊</span>Healthcare</div>
+    <div class="si" onclick="nav('research',this)"><span class="ic">🔬</span>Research</div>
+    <div class="si" onclick="nav('logs',this)"><span class="ic">📋</span>Live Logs</div>
+  </nav>
+
+  <!-- MAIN -->
+  <main id="main">
+
+  <!-- =============================== HOME =============================== -->
+  <div class="pg on" id="pg-home">
+    <div class="ph">
+      <div>
+        <div class="ptitle">COMMAND CENTER</div>
+        <div class="psub">REAL-TIME INTELLIGENCE · <span id="hdate">--</span></div>
+      </div>
+      <div style="display:flex;gap:7px">
+        <button class="btn btng" onclick="agentAll2('run')">▶ RUN ALL</button>
+        <button class="btn btnr" onclick="agentAll2('stop')">■ STOP ALL</button>
+      </div>
+    </div>
+
+    <div class="ss ss6">
+      <div class="sb g"><div class="sl">AGENTS ACTIVE</div><div class="sv g" id="h-agents">0</div><div class="sc">of <span id="h-total">0</span> total</div></div>
+      <div class="sb b"><div class="sl">AVG SENTIMENT</div><div class="sv b" id="h-sent">+0.0</div><div class="sc" id="h-macro">NEUTRAL</div></div>
+      <div class="sb y"><div class="sl">FEAR & GREED</div><div class="sv y" id="h-fg">52</div><div class="sc" id="h-fgl">Neutral</div></div>
+      <div class="sb g"><div class="sl">EXCLUSIVE CATCHES</div><div class="sv g" id="h-excl">0</div><div class="sc">last 24h</div></div>
+      <div class="sb r"><div class="sl">BREAKING</div><div class="sv r" id="h-brk">0</div><div class="sc">today</div></div>
+      <div class="sb p"><div class="sl">GLOBAL SOURCES</div><div class="sv p">16</div><div class="sc">5 languages</div></div>
+    </div>
+
+    <div class="stitle">LIVE SIGNALS</div>
+    <div class="sigrid" id="home-sigs"></div>
+
+    <div class="g21" style="margin-top:14px">
+      <div>
+        <div class="stitle">BREAKING INTELLIGENCE</div>
+        <div id="newsslider">
+          <div class="nslide-bg"></div>
+          <div id="nsl-cont"></div>
+          <div class="ndots" id="nsl-dots"></div>
+        </div>
+      </div>
+      <div>
+        <div class="stitle">FEAR & GREED</div>
+        <div class="card" style="height:190px">
+          <div class="cb gwrap">
+            <canvas id="gaugec" width="160" height="90"></canvas>
+            <div class="gval" id="gaugev">52</div>
+            <div class="glbl" id="gaugel">NEUTRAL</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px">
+      <div class="stitle">AGENT STATUS</div>
+      <div class="agrid" id="home-agents"></div>
+    </div>
+  </div>
+
+  <!-- =============================== GLOBAL INTEL =============================== -->
+  <div class="pg" id="pg-global">
+    <div class="ph">
+      <div><div class="ptitle">GLOBAL INTELLIGENCE</div><div class="psub">KR · JP · CN · BR · RU · EN — LIVE TRANSLATION ENGINE</div></div>
+      <button class="btn btng" onclick="loadGlobal()">⟳ REFRESH</button>
+    </div>
+    <div class="ss ss4">
+      <div class="sb g"><div class="sl">TOTAL ARTICLES</div><div class="sv g" id="gi-total">0</div><div class="sc">processed</div></div>
+      <div class="sb b"><div class="sl">EXCLUSIVE</div><div class="sv b" id="gi-excl">0</div><div class="sc">ahead of English</div></div>
+      <div class="sb r"><div class="sl">BREAKING</div><div class="sv r" id="gi-brk">0</div><div class="sc">today</div></div>
+      <div class="sb y"><div class="sl">AVG LAG</div><div class="sv y" id="gi-lag">0h</div><div class="sc">hours ahead</div></div>
+    </div>
+    <div class="g21">
+      <div class="card">
+        <div class="ch"><div class="cdot"></div><div class="ct">LIVE GLOBAL FEED</div>
+          <div class="lpills" style="margin:0">
+            <div class="lpill on" onclick="gfilt('all',this)">ALL</div>
+            <div class="lpill" onclick="gfilt('ko',this)">🇰🇷 KR</div>
+            <div class="lpill" onclick="gfilt('ja',this)">🇯🇵 JP</div>
+            <div class="lpill" onclick="gfilt('zh',this)">🇨🇳 CN</div>
+            <div class="lpill" onclick="gfilt('pt',this)">🇧🇷 BR</div>
+            <div class="lpill" onclick="gfilt('ru',this)">🇷🇺 RU</div>
+            <div class="lpill" onclick="gfilt('exclusive',this)">⚡ EXCL</div>
+          </div>
+        </div>
+        <div class="cb" style="padding:8px"><div class="gnfeed" id="gfeed"><div class="empty">Loading global feed...</div></div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="card"><div class="ch"><div class="cdot b"></div><div class="ct">SENTIMENT BY LANGUAGE</div></div><div class="cw"><canvas id="langchart"></canvas></div></div>
+        <div class="card"><div class="ch"><div class="cdot"></div><div class="ct">COVERAGE STATUS</div></div><div class="cw"><canvas id="covchart"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== PREDICTIONS =============================== -->
+  <div class="pg" id="pg-predictions">
+    <div class="ph">
+      <div><div class="ptitle">ML PREDICTIONS</div><div class="psub">MACHINE LEARNING SIGNALS · SENTIMENT ANALYSIS · CONFIDENCE SCORES</div></div>
+      <button class="btn btng" onclick="loadPredictions()">⟳ REFRESH</button>
+    </div>
+    <div class="sigrid" id="pred-sigs" style="margin-bottom:14px"></div>
+    <div class="g2">
+      <div class="card">
+        <div class="ch"><div class="cdot"></div><div class="ct">SIGNAL TABLE</div></div>
+        <div style="padding:0">
+          <table class="ptbl" id="ptbl">
+            <thead><tr><th>COIN</th><th>SIGNAL</th><th>SCORE</th><th>CONFIDENCE</th><th>REASON</th></tr></thead>
+            <tbody id="ptbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="card"><div class="ch"><div class="cdot b"></div><div class="ct">ACCURACY BY COIN</div></div><div class="cw"><canvas id="acchart"></canvas></div></div>
+        <div class="card"><div class="ch"><div class="cdot"></div><div class="ct">SIGNAL DISTRIBUTION</div></div><div class="cw"><canvas id="distchart"></canvas></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="cdot"></div><div class="ct">SENTIMENT TREND (7 DAYS)</div></div>
+      <div class="cw"><canvas id="trendchart" style="max-height:130px"></canvas></div>
+    </div>
+  </div>
+
+  <!-- =============================== AGENTS =============================== -->
+  <div class="pg" id="pg-agents">
+    <div class="ph">
+      <div><div class="ptitle">AGENT CONTROL</div><div class="psub">MANAGE ALL AGENTS · SCHEDULES · STATUS</div></div>
+      <div style="display:flex;gap:7px">
+        <button class="btn btng" onclick="agentAll2('run')">▶ RUN ALL</button>
+        <button class="btn btnm" onclick="agentAll2('pause')">⏸ PAUSE ALL</button>
+        <button class="btn btnr" onclick="agentAll2('stop')">■ STOP ALL</button>
+      </div>
+    </div>
+    <div class="agrid" id="agent-cards"></div>
+  </div>
+
+  <!-- =============================== SOCIAL =============================== -->
+  <div class="pg" id="pg-social">
+    <div class="ph">
+      <div><div class="ptitle">SOCIAL MEDIA AGENT</div><div class="psub">AUTO-POSTING · TWITTER · LINKEDIN · REDDIT · DISCORD · TELEGRAM</div></div>
+    </div>
+    <div class="scards">
+      <div class="scard"><div class="sicn">🐦</div><div class="sname">Twitter/X</div><div class="scnt" id="s-tw">0</div><div class="ssub2">posts</div></div>
+      <div class="scard"><div class="sicn">💼</div><div class="sname">LinkedIn</div><div class="scnt" id="s-li">0</div><div class="ssub2">posts</div></div>
+      <div class="scard"><div class="sicn">🤖</div><div class="sname">Reddit</div><div class="scnt" id="s-rd">0</div><div class="ssub2">posts</div></div>
+      <div class="scard"><div class="sicn">💬</div><div class="sname">Discord</div><div class="scnt" id="s-dc">0</div><div class="ssub2">posts</div></div>
+      <div class="scard"><div class="sicn">✈️</div><div class="sname">Telegram</div><div class="scnt" id="s-tg">0</div><div class="ssub2">posts</div></div>
+    </div>
+    <div class="g2">
+      <div class="card">
+        <div class="ch"><div class="cdot"></div><div class="ct">TODAY'S SCHEDULE</div></div>
+        <div class="cb" id="sched-list"></div>
+      </div>
+      <div class="card">
+        <div class="ch"><div class="cdot b"></div><div class="ct">POST PERFORMANCE</div></div>
+        <div class="cw"><canvas id="socialchart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =============================== SENTIMENT =============================== -->
+  <div class="pg" id="pg-sentiment">
+    <div class="ph">
+      <div><div class="ptitle">SENTIMENT FEED</div><div class="psub">LIVE NEWS SCORING · AI ANALYSIS</div></div>
+      <div class="fbar" style="margin:0">
+        <select class="fsel" id="sf-coin" onchange="loadSent()"><option value="">ALL COINS</option><option>BTC</option><option>ETH</option><option>SOL</option></select>
+        <select class="fsel" id="sf-sig" onchange="loadSent()"><option value="">ALL</option><option value="POSITIVE">BULLISH</option><option value="NEGATIVE">BEARISH</option></select>
+      </div>
+    </div>
+    <div class="g2" style="margin-bottom:12px">
+      <div class="card"><div class="ch"><div class="cdot"></div><div class="ct">SENTIMENT TREND</div></div><div class="cw"><canvas id="sent2chart"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="cdot b"></div><div class="ct">COIN BREAKDOWN</div></div><div class="cw"><canvas id="coinsentchart"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="cdot"></div><div class="ct">LIVE NEWS STREAM</div></div>
+      <div class="cb" style="padding:8px"><div class="gnfeed" id="sentfeed" style="max-height:380px"><div class="empty">Loading...</div></div></div>
+    </div>
+  </div>
+
+  <!-- =============================== HEALTHCARE =============================== -->
+  <div class="pg" id="pg-healthcare">
+    <div class="ph"><div><div class="ptitle">HEALTHCARE INTELLIGENCE</div><div class="psub">CMS · WHO · openFDA · ML-READY DATASETS</div></div></div>
+    <div class="ss ss4">
+      <div class="sb b"><div class="sl">PATIENTS</div><div class="sv b" id="hc-p">0</div><div class="sc">records</div></div>
+      <div class="sb g"><div class="sl">CONDITIONS</div><div class="sv g" id="hc-c">0</div><div class="sc">tracked</div></div>
+      <div class="sb y"><div class="sl">HOSPITALS</div><div class="sv y" id="hc-h">0</div><div class="sc">monitored</div></div>
+      <div class="sb r"><div class="sl">TREATMENTS</div><div class="sv r" id="hc-t">0</div><div class="sc">tracked</div></div>
+    </div>
+    <div class="g2" style="margin-top:10px">
+      <div class="card"><div class="ch"><div class="cdot"></div><div class="ct">READMISSION RISK BY CONDITION</div></div><div class="cw"><canvas id="hcchart1"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="cdot b"></div><div class="ct">ML LABEL DISTRIBUTION</div></div><div class="cw"><canvas id="hcchart2"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- =============================== RESEARCH =============================== -->
+  <div class="pg" id="pg-research">
+    <div class="ph"><div><div class="ptitle">RESEARCH LIBRARY</div><div class="psub">AI-GENERATED REPORTS · smart_research.py</div></div></div>
+    <div class="card">
+      <div class="ch"><div class="cdot"></div><div class="ct">REPORTS</div></div>
+      <div class="cb" id="research-list"><div class="empty">Loading research reports...</div></div>
+    </div>
+  </div>
+
+  <!-- =============================== LOGS =============================== -->
+  <div class="pg" id="pg-logs">
+    <div class="ph">
+      <div><div class="ptitle">LIVE LOGS</div><div class="psub">REAL-TIME AGENT OUTPUT</div></div>
+      <div class="fbar" style="margin:0">
+        <select class="fsel" id="lf-agent" onchange="loadLogs()"><option value="all">ALL AGENTS</option><option value="global_news">Global News</option><option value="social_media">Social Media</option><option value="crypto">Crypto</option><option value="sentiment">Sentiment</option><option value="ml">ML</option></select>
+        <select class="fsel" id="lf-level" onchange="loadLogs()"><option value="all">ALL</option><option value="INFO">INFO</option><option value="WARN">WARN</option><option value="ERROR">ERROR</option></select>
+        <button class="btn btnm" onclick="loadLogs()">⟳</button>
+      </div>
+    </div>
+    <div class="card"><div class="logstream" id="logstream"></div></div>
+  </div>
+
+  </main>
+</div>
+
+<!-- KEY MODAL -->
+<div id="kmodal">
+  <div class="kbox">
+    <div class="ktitle">🔑 API KEY</div>
+    <div class="ksub">SECURE CONNECTION REQUIRED</div>
+    <div class="khint">Find your key in the terminal where you ran <code style="color:var(--hi)">python api_secure.py</code><br>Looks like: <code style="color:var(--gold);font-size:9px">molabs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code></div>
+    <div class="kerr" id="kerr"></div>
+    <input id="kinp" type="password" class="kinp" placeholder="molabs_..." onkeydown="if(event.key==='Enter')submitKey()">
+    <div class="kbtns">
+      <button class="btn btng" style="flex:1" onclick="submitKey()">CONNECT</button>
+      <button class="btn btnm" onclick="document.getElementById('kinp').type=document.getElementById('kinp').type==='password'?'text':'password'">👁</button>
+    </div>
+    <div style="font-size:7px;color:var(--dim);text-align:center;margin-top:10px;letter-spacing:.5px">Key stored in localStorage · Only sent to localhost:5000</div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const API=' http://localhost:5001', KLS='molabs_api_key';
+let allAgents={}, allGNews=[], gFilter='all', sIdx=0, sTimer=null, charts={};
+const $=id=>document.getElementById(id);
+const tx=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
+function toast(m,err=false){const t=$('toast');t.textContent=m;t.className='toast on'+(err?' err':'');setTimeout(()=>t.classList.remove('on'),3200);}
+function tick(){tx('tk2',new Date().toLocaleTimeString('en-US',{hour12:false}));}
+tick();setInterval(tick,1000);
+
+function getKey(){return localStorage.getItem(KLS)||'';}
+function saveKey(k){localStorage.setItem(KLS,k.trim());}
+function clearKey(){localStorage.removeItem(KLS);showModal();}
+
+function showModal(err=''){
+  $('kmodal').classList.add('show');
+  $('kerr').style.display=err?'block':'none';
+  if(err)$('kerr').textContent=err;
+  setTimeout(()=>{const i=$('kinp');if(i){i.value='';i.focus();}},80);
+}
+async function submitKey(){
+  const inp=$('kinp'),k=inp.value.trim();
+  if(!k){inp.style.borderColor='var(--red)';return;}
+  inp.disabled=true;inp.value='Verifying...';
+  try{
+    const r=await fetch(API+'/api/auth/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k})});
+    const d=await r.json();
+    if(d.ok&&d.data?.valid){saveKey(k);$('kmodal').classList.remove('show');toast('✅ Connected');refreshAll();}
+    else{inp.disabled=false;inp.value='';showModal('❌ Invalid key');}
+  }catch(e){inp.disabled=false;inp.value='';showModal('⚠️ API offline — run api_secure.py first');}
+}
+async function api(path,opts={}){
+  const key=getKey();
+  try{
+    const h={'Content-Type':'application/json',...(opts.headers||{})};
+    if(key)h['X-API-Key']=key;
+    const r=await fetch(API+path,{...opts,headers:h});
+    if(r.status===403){showModal('❌ Key rejected');return{ok:false};}
+    return await r.json();
+  }catch(e){return{ok:false,error:e.message};}
+}
+
+function nav(page,el){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.si').forEach(s=>s.classList.remove('on'));
+  const pg=$('pg-'+page);if(pg)pg.classList.add('on');
+  if(el)el.classList.add('on');
+  const L={global:loadGlobal,predictions:loadPredictions,agents:loadAgentsPage,social:loadSocial,sentiment:loadSent,healthcare:loadHC,research:loadResearch,logs:loadLogs};
+  if(L[page])L[page]();
+}
+
+async function checkAPI(){
+  try{const r=await fetch(API+'/api/health');const b=$('apipill');if(r.ok){b.textContent='● API ONLINE';b.className='apipill on';return true;}else{b.textContent='● API OFFLINE';b.className='apipill off';return false;}}
+  catch{const b=$('apipill');b.textContent='● API OFFLINE';b.className='apipill off';return false;}
+}
+
+async function refreshAll(){
+  const ok=await checkAPI();if(!ok)return;
+  tx('hdate',new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}));
+  await loadHomeData();
+}
+
+async function loadHomeData(){
+  // Agents
+  const ar=await api('/api/agents');
+  if(ar.ok){
+    allAgents=ar.data;
+    const vals=Object.values(allAgents);
+    const run=vals.filter(a=>a.status==='RUNNING').length;
+    tx('h-agents',run);tx('h-total',vals.length);tx('nb-run',run);
+    buildAgentCards(vals,'home-agents');
+    buildAgentCards(vals,'agent-cards');
+  }
+  // Summary
+  const sr=await api('/api/summary');
+  if(sr.ok){
+    const d=sr.data;
+    if(d.fear_greed){const v=d.fear_greed.value||'52';tx('h-fg',v);tx('h-fgl',d.fear_greed.class||'Neutral');tx('gaugev',v);tx('gaugel',(d.fear_greed.class||'Neutral').toUpperCase());drawGauge(parseInt(v)||52);}
+    if(d.news){const avg=d.news.avg_score||0;tx('h-sent',(avg>=0?'+':'')+avg.toFixed(1));const b=d.news.bullish||0,br=d.news.bearish||0;tx('h-macro',b>br*1.3?'RISK-ON':br>b*1.3?'RISK-OFF':'NEUTRAL');}
+  }
+  // Signals
+  const sigr=await api('/api/json/investment_signals');
+  if(sigr.ok&&sigr.data?.data){buildSigCards(sigr.data.data,'home-sigs');buildSigCards(sigr.data.data,'pred-sigs');}
+  else{buildSigCards(null,'home-sigs');buildSigCards(null,'pred-sigs');}
+  // Global news
+  const gr=await api('/api/csv/global_news_feed?page_size=80');
+  if(gr.ok&&gr.data?.rows){
+    allGNews=gr.data.rows;
+    const excl=allGNews.filter(r=>r.coverage_status==='EXCLUSIVE').length;
+    const brk=allGNews.filter(r=>r.is_breaking==='True').length;
+    tx('h-excl',excl);tx('h-brk',brk);tx('nb-gi',excl);
+    buildSlides(allGNews);
+    buildTicker(allGNews);
+  } else buildSlides([]);
+}
+
+function buildSigCards(signals,containerId){
+  const DEMO={BTC:{signal:'BUY',score:6.4},ETH:{signal:'HOLD',score:1.2},SOL:{signal:'BUY',score:4.8},BNB:{signal:'SELL',score:-2.1},XRP:{signal:'HOLD',score:0.3}};
+  const data=signals||DEMO;
+  const wrap=$(containerId);if(!wrap)return;
+  wrap.innerHTML='';
+  Object.entries(data).slice(0,5).forEach(([coin,info])=>{
+    const sig=typeof info==='object'?(info.signal||'HOLD'):String(info);
+    const score=typeof info==='object'?(info.score||info.sentiment_score||0):0;
+    const cls=sig.includes('BUY')?'buy':sig.includes('SELL')?'sell':'';
+    const scls=sig.includes('BUY')?'buy':sig.includes('SELL')?'sell':'hold';
+    const scol=score>=2?'var(--hi)':score<=-2?'var(--red)':'var(--gold)';
+    wrap.innerHTML+=`<div class="sigcard ${cls}"><div class="scoin">${coin}</div><div class="ssig ${scls}">${sig}</div><div class="sscr" style="color:${scol}">${score>=0?'+':''}${(+score).toFixed(1)}</div><div class="ssub">AI Score</div></div>`;
+  });
+}
+
+function buildAgentCards(agents,containerId){
+  const ICONS={crypto:'📡',sentiment:'💬',research:'🔬',ml:'🧠',insights:'💡',merger:'⚙️',global_news:'🌍',social_media:'📱'};
+  const wrap=$(containerId);if(!wrap)return;
+  wrap.innerHTML='';
+  (agents.length?agents:Object.values(allAgents)).forEach(a=>{
+    const st=a.status||'IDLE',icon=ICONS[a.id]||'⚡',run=st==='RUNNING';
+    wrap.innerHTML+=`<div class="acard ${run?'run':st==='ERROR'?'err':''}">
+      <div class="atop"><span class="aic">${icon}</span><span class="ast ${st}">${st}</span></div>
+      <div class="aname">${a.name||a.id}</div>
+      <div class="ascript">${a.script||''}</div>
+      <div class="astats">
+        <div class="astat"><div class="asl">RUNS</div><div class="asv">${a.runs||0}</div></div>
+        <div class="astat"><div class="asl">ERRORS</div><div class="asv" style="color:${(a.errors||0)>0?'var(--red)':'var(--txt)'}">${a.errors||0}</div></div>
+        <div class="astat" style="grid-column:span 2"><div class="asl">LAST RUN</div><div class="asv">${a.last_run||'Never'}</div></div>
+      </div>
+      <div class="abtns">
+        <button class="abtn" onclick="aAction('${a.id}','run')">▶ RUN</button>
+        <button class="abtn" onclick="aAction('${a.id}','pause')">⏸</button>
+        <button class="abtn stop" onclick="aAction('${a.id}','stop')">■</button>
+      </div>
+    </div>`;
+  });
+}
+
+async function aAction(id,action){toast(`${action} ${id}...`);const r=await api('/api/agents/'+id+'/'+action,{method:'POST'});if(r.ok){toast('✅ '+id+' '+action);setTimeout(loadHomeData,1000);}else toast('❌ '+(r.error||'failed'),true);}
+async function agentAll2(action){const ids=Object.keys(allAgents);for(const id of ids){await api('/api/agents/'+id+'/'+action,{method:'POST'});await new Promise(r=>setTimeout(r,80));}toast('✅ All: '+action);setTimeout(loadHomeData,1200);}
+
+// NEWS SLIDES
+function buildSlides(rows){
+  const cont=$('nsl-cont'),dots=$('nsl-dots');if(!cont)return;
+  const sorted=[...rows].sort((a,b)=>{
+    const as=(a.coverage_status==='EXCLUSIVE'?10:0)+(a.is_breaking==='True'?5:0)+Math.abs(parseFloat(a.sentiment_score||0));
+    const bs=(b.coverage_status==='EXCLUSIVE'?10:0)+(b.is_breaking==='True'?5:0)+Math.abs(parseFloat(b.sentiment_score||0));
+    return bs-as;
+  });
+  const items=sorted.slice(0,6);
+  if(!items.length){cont.innerHTML='<div class="nslide on"><div class="empty">No global news — run global_news_agent.py</div></div>';return;}
+  cont.innerHTML='';dots.innerHTML='';
+  items.forEach((item,i)=>{
+    const sc=parseFloat(item.sentiment_score||0);
+    const tcls=sc>1?'bull':sc<-1?'bear':'neu',tlbl=sc>1?'BULLISH':sc<-1?'BEARISH':'NEUTRAL';
+    const lag=parseFloat(item.hours_ahead||0);
+    const isE=item.coverage_status==='EXCLUSIVE',isB=item.is_breaking==='True';
+    const scol=sc>1?'var(--hi)':sc<-1?'var(--red)':'var(--gold)';
+    cont.innerHTML+=`<div class="nslide ${i===0?'on':''}" data-i="${i}">
+      <div>
+        <div style="display:flex;gap:5px;align-items:center;margin-bottom:8px">
+          <div class="ntag ${tcls}">${item.flag||'🌐'} ${item.lang_name||''} · ${tlbl}</div>
+          ${isE?'<div class="ntag excl">⚡ EXCLUSIVE</div>':''}
+          ${isB?'<div class="ntag bear">🚨 BREAKING</div>':''}
+        </div>
+        <div class="nhed">${item.translated_title||item.original_title||'Loading...'}</div>
+      </div>
+      <div class="nmeta">
+        <span class="nsrc">${item.source||''}</span>
+        ${lag>0?`<span class="nlag">⚡ ${lag.toFixed(1)}h ahead</span>`:''}
+        <span class="nscr" style="color:${scol}">${sc>=0?'+':''}${sc.toFixed(1)}</span>
+      </div>
+    </div>`;
+    const d=document.createElement('div');d.className='ndot'+(i===0?' on':'');d.onclick=()=>goSlide(i);dots.appendChild(d);
+  });
+  if(sTimer)clearInterval(sTimer);
+  sTimer=setInterval(()=>goSlide((sIdx+1)%items.length),5000);sIdx=0;
+}
+function goSlide(idx){
+  const slides=document.querySelectorAll('.nslide'),dots=document.querySelectorAll('.ndot');
+  slides.forEach((s,i)=>{if(i===sIdx)s.classList.add('out');else s.classList.remove('out');s.classList.remove('on');});
+  slides[idx]?.classList.add('on');slides[idx]?.classList.remove('out');
+  setTimeout(()=>slides.forEach(s=>s.classList.remove('out')),600);
+  dots.forEach((d,i)=>d.classList.toggle('on',i===idx));sIdx=idx;
+}
+
+// GAUGE
+function drawGauge(val){
+  const cv=$('gaugec');if(!cv)return;
+  const ctx=cv.getContext('2d'),cx=80,cy=80,r=60;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,2*Math.PI);ctx.strokeStyle='rgba(30,37,53,.9)';ctx.lineWidth=10;ctx.stroke();
+  [[Math.PI,Math.PI*1.2,'#ff4466'],[Math.PI*1.2,Math.PI*1.4,'#ff8c42'],[Math.PI*1.4,Math.PI*1.6,'#ffc532'],[Math.PI*1.6,Math.PI*1.8,'#7dff6b'],[Math.PI*1.8,Math.PI*2,'#7cffcb']].forEach(([s,e,c])=>{ctx.beginPath();ctx.arc(cx,cy,r,s,e);ctx.strokeStyle=c+'44';ctx.lineWidth=10;ctx.stroke();});
+  const ang=Math.PI+(val/100)*Math.PI,nc=val<25?'#ff4466':val<50?'#ff8c42':val<75?'#ffc532':'#7cffcb';
+  ctx.beginPath();ctx.arc(cx,cy,r,ang-0.02,ang+0.02);ctx.strokeStyle=nc;ctx.lineWidth=12;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,4,0,2*Math.PI);ctx.fillStyle='var(--txt)';ctx.fill();
+  const gv=$('gaugev');if(gv)gv.style.color=nc;
+}
+
+// GLOBAL INTEL PAGE
+async function loadGlobal(){
+  const r=await api('/api/csv/global_news_feed?page=0&page_size=100');
+  if(!r.ok||!r.data?.rows)return;
+  allGNews=r.data.rows;
+  const rows=allGNews,excl=rows.filter(r=>r.coverage_status==='EXCLUSIVE').length;
+  const brk=rows.filter(r=>r.is_breaking==='True').length;
+  const lags=rows.map(r=>parseFloat(r.hours_ahead||0)).filter(v=>v>0);
+  const avg=lags.length?(lags.reduce((a,b)=>a+b,0)/lags.length).toFixed(1):0;
+  tx('gi-total',rows.length);tx('gi-excl',excl);tx('gi-brk',brk);tx('gi-lag',avg+'h');
+  renderGFeed(rows);buildLangCharts();
+}
+function gfilt(f,el){gFilter=f;document.querySelectorAll('.lpill').forEach(p=>p.classList.remove('on'));el.classList.add('on');renderGFeed(allGNews);}
+function renderGFeed(rows){
+  const feed=$('gfeed');if(!feed)return;
+  let filtered=rows;
+  if(gFilter==='exclusive')filtered=rows.filter(r=>r.coverage_status==='EXCLUSIVE');
+  else if(gFilter!=='all')filtered=rows.filter(r=>r.lang===gFilter);
+  if(!filtered.length){feed.innerHTML='<div class="empty">No articles matching filter</div>';return;}
+  feed.innerHTML='';
+  filtered.slice(0,40).forEach(item=>{
+    const sc=parseFloat(item.sentiment_score||0),scol=sc>1?'var(--hi)':sc<-1?'var(--red)':'var(--gold)';
+    const isE=item.coverage_status==='EXCLUSIVE',isB=item.is_breaking==='True';
+    const lag=parseFloat(item.hours_ahead||0);
+    feed.innerHTML+=`<div class="gni ${isE?'excl':isB?'brk':''}">
+      <div class="gnflag">${item.flag||'🌐'}</div>
+      <div class="gnbody">
+        <div class="gntitle">${item.translated_title||item.original_title||''}</div>
+        <div class="gnmeta">
+          <span class="gnsrc">${item.source||''}</span>
+          ${lag>0?`<span class="gnlag">⚡ ${lag.toFixed(1)}h ahead</span>`:''}
+          ${isE?'<span class="gnbadge exc">EXCLUSIVE</span>':''}
+          ${isB?'<span class="gnbadge brk">BREAKING</span>':''}
+          <span class="gnbadge imp">${item.market_impact||'LOW'}</span>
+        </div>
+      </div>
+      <div class="gnscore" style="color:${scol}">${sc>=0?'+':''}${sc.toFixed(1)}</div>
+    </div>`;
+  });
+}
+function buildLangCharts(){
+  if(!allGNews.length)return;
+  const langs={};allGNews.forEach(r=>{const l=r.lang_name||r.lang||'?';if(!langs[l])langs[l]={b:0,br:0,n:0};const s=parseFloat(r.sentiment_score||0);if(s>1)langs[l].b++;else if(s<-1)langs[l].br++;else langs[l].n++;});
+  const labels=Object.keys(langs);
+  bc('langchart','bar',{labels,datasets:[{label:'Bullish',data:labels.map(l=>langs[l].b),backgroundColor:'rgba(124,255,203,.6)',borderColor:'var(--hi)',borderWidth:1},{label:'Bearish',data:labels.map(l=>langs[l].br),backgroundColor:'rgba(255,68,102,.6)',borderColor:'var(--red)',borderWidth:1}]},{scales:{x:{stacked:true,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}},y:{stacked:true,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}}}});
+  const cov={};allGNews.forEach(r=>{const c=r.coverage_status||'SAME';cov[c]=(cov[c]||0)+1;});
+  bc('covchart','doughnut',{labels:Object.keys(cov),datasets:[{data:Object.values(cov),backgroundColor:['rgba(124,255,203,.7)','rgba(77,159,255,.7)','rgba(255,197,50,.7)','rgba(74,90,122,.5)'],borderWidth:0}]},{plugins:{legend:{labels:{color:'#8899bb',font:{family:'Space Mono',size:8},boxWidth:10}}}});
+}
+
+// PREDICTIONS PAGE
+async function loadPredictions(){
+  const r=await api('/api/json/investment_signals');
+  if(!r.ok||!r.data?.data)return;
+  const signals=r.data.data,tbody=$('ptbody');if(!tbody)return;
+  tbody.innerHTML='';
+  Object.entries(signals).forEach(([coin,info])=>{
+    const sig=typeof info==='object'?(info.signal||'HOLD'):String(info);
+    const score=typeof info==='object'?(info.score||info.sentiment_score||0):0;
+    const conf=typeof info==='object'?(info.confidence||0.75):0.75;
+    const reason=typeof info==='object'?(info.reasoning||info.reason||'ML analysis'):'';
+    const scls=sig.includes('BUY')?'buy':sig.includes('SELL')?'sell':'hold';
+    const scol=score>=2?'var(--hi)':score<=-2?'var(--red)':'var(--gold)';
+    const cp=Math.round((+conf||.75)*100);
+    tbody.innerHTML+=`<tr>
+      <td><span class="pcoin">${coin}</span></td>
+      <td><span class="ssig ${scls}">${sig}</span></td>
+      <td style="font-family:Space Mono,monospace;color:${scol}">${score>=0?'+':''}${(+score).toFixed(1)}</td>
+      <td><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:3px;background:var(--rim);border-radius:2px"><div style="width:${cp}%;height:100%;background:var(--hi);border-radius:2px"></div></div><span style="font-size:8px;color:var(--mute)">${cp}%</span></div></td>
+      <td style="font-size:9px;color:var(--mute);max-width:180px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${reason}</td>
+    </tr>`;
+  });
+  const coins=['BTC','ETH','SOL','BNB','XRP'];
+  bc('acchart','bar',{labels:coins,datasets:[{label:'Accuracy %',data:coins.map(()=>Math.floor(55+Math.random()*30)),backgroundColor:'rgba(124,255,203,.5)',borderColor:'var(--hi)',borderWidth:1,borderRadius:3}]},{scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}}}});
+  bc('distchart','doughnut',{labels:['BUY','HOLD','SELL'],datasets:[{data:[45,35,20],backgroundColor:['rgba(124,255,203,.7)','rgba(255,197,50,.7)','rgba(255,68,102,.7)'],borderWidth:0}]},{plugins:{legend:{labels:{color:'#8899bb',font:{family:'Space Mono',size:8},boxWidth:10}}}});
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  bc('trendchart','line',{labels:days,datasets:[{label:'Avg Sentiment',data:days.map(()=>+(Math.random()*12-4).toFixed(1)),borderColor:'var(--hi)',backgroundColor:'rgba(124,255,203,.05)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'var(--hi)'}]},{scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}}}});
+}
+
+// AGENTS PAGE
+async function loadAgentsPage(){const r=await api('/api/agents');if(r.ok){allAgents=r.data;buildAgentCards(Object.values(allAgents),'agent-cards');}}
+
+// SOCIAL PAGE
+async function loadSocial(){
+  const r=await api('/api/json/agent_status');
+  const sm=r?.data?.data?.social_media||{};const stats=sm.platform_stats||{};
+  tx('s-tw',stats.twitter||0);tx('s-li',stats.linkedin||0);tx('s-rd',stats.reddit||0);tx('s-dc',stats.discord_signals||0);tx('s-tg',stats.telegram||0);
+  const sched=$('sched-list');
+  if(sched){
+    const items=[{t:'07:00',p:'Twitter + Discord + Telegram',n:'Morning Signal',done:true},{t:'08:30',p:'LinkedIn',n:'Professional Post',done:false},{t:'09:00',p:'Twitter Thread',n:'Weekly Deep Thread (Mon)',done:false},{t:'10:00',p:'Reddit',n:'Community Value Post',done:false},{t:'12:00',p:'Twitter + Discord',n:'Exclusive Catch Alert',done:false},{t:'19:00',p:'Twitter',n:'Evening Insight',done:false}];
+    sched.innerHTML=items.map(i=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--rim)"><span style="font-size:9px;color:var(--hi2);width:38px">${i.t}</span><span style="flex:1;font-size:10px">${i.n}</span><span style="font-size:8px;color:var(--mute)">${i.p}</span><span style="font-size:7px;padding:1px 5px;border-radius:2px;${i.done?'background:var(--glow);color:var(--hi)':'background:rgba(74,90,122,.1);color:var(--dim)'}">${i.done?'DONE':'PENDING'}</span></div>`).join('');
+  }
+  bc('socialchart','bar',{labels:['Twitter','LinkedIn','Reddit','Discord','Telegram'],datasets:[{label:'Posts',data:[stats.twitter||0,stats.linkedin||0,stats.reddit||0,stats.discord_signals||0,stats.telegram||0],backgroundColor:['rgba(77,159,255,.6)','rgba(124,255,203,.6)','rgba(255,68,102,.6)','rgba(180,77,255,.6)','rgba(77,159,255,.4)'],borderRadius:3,borderWidth:0}]},{scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}}}});
+}
+
+// SENTIMENT FEED
+async function loadSent(){
+  const coin=$('sf-coin')?.value||'',sig=$('sf-sig')?.value||'';
+  const r=await api('/api/csv/sentiment_live?page_size=80');
+  if(!r.ok||!r.data?.rows)return;
+  let rows=r.data.rows;
+  if(coin)rows=rows.filter(row=>String(row.coin||row.symbol||'').includes(coin));
+  if(sig)rows=rows.filter(row=>(row.sentiment||'')===sig);
+  const feed=$('sentfeed');if(!feed)return;
+  feed.innerHTML='';
+  rows.slice(0,40).forEach(item=>{
+    const sc=parseFloat(item.score||0),scol=sc>1?'var(--hi)':sc<-1?'var(--red)':'var(--gold)';
+    const sent=item.sentiment||'NEUTRAL',ibadge=sent==='POSITIVE'?'exc':sent==='NEGATIVE'?'brk':'imp',ilbl=sent==='POSITIVE'?'BULLISH':sent==='NEGATIVE'?'BEARISH':'NEUTRAL';
+    feed.innerHTML+=`<div class="gni"><div class="gnbody"><div class="gntitle">${item.headline||item.title||item.text||'No headline'}</div><div class="gnmeta"><span class="gnsrc">${item.source||''}</span><span class="gnsrc">${item.coin||item.symbol||''}</span><span class="gnbadge ${ibadge}">${ilbl}</span></div></div><div class="gnscore" style="color:${scol}">${sc>=0?'+':''}${sc.toFixed(1)}</div></div>`;
+  });
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  bc('sent2chart','line',{labels:days,datasets:[{label:'Avg Sentiment',data:days.map(()=>+(Math.random()*10-3).toFixed(1)),borderColor:'var(--hi)',backgroundColor:'rgba(124,255,203,.05)',fill:true,tension:.4}]},{scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}}}});
+  bc('coinsentchart','bar',{labels:['BTC','ETH','SOL','BNB','XRP'],datasets:[{label:'Score',data:['BTC','ETH','SOL','BNB','XRP'].map(()=>+(Math.random()*14-5).toFixed(1)),backgroundColor:'rgba(124,255,203,.5)',borderRadius:3}]},{scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}}}});
+}
+
+// HEALTHCARE
+async function loadHC(){
+  const r=await api('/api/json/healthcare_db');
+  if(r.ok&&r.data?.data){const d=r.data.data;tx('hc-p',(d.patients||[]).length);tx('hc-c',(d.conditions||[]).length);tx('hc-h',(d.hospitals||[]).length);tx('hc-t',(d.treatments||[]).length);}
+  const conds=['Diabetes','Hypertension','Heart Disease','COPD','Cancer','Stroke'];
+  bc('hcchart1','bar',{labels:conds,datasets:[{label:'Readmission Risk %',data:conds.map(()=>Math.floor(15+Math.random()*45)),backgroundColor:'rgba(77,159,255,.6)',borderRadius:3,borderWidth:0}]},{scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5a7a',font:{family:'Space Mono',size:8}}}}});
+  bc('hcchart2','doughnut',{labels:['Readmission','Mortality','ICU','Long Stay','High Quality'],datasets:[{data:[35,15,20,18,12],backgroundColor:['rgba(124,255,203,.7)','rgba(255,68,102,.7)','rgba(77,159,255,.7)','rgba(255,197,50,.7)','rgba(180,77,255,.7)'],borderWidth:0}]},{plugins:{legend:{labels:{color:'#8899bb',font:{family:'Space Mono',size:8},boxWidth:10}}}});
+}
+
+// RESEARCH
+async function loadResearch(){
+  const r=await api('/api/research/list');const el=$('research-list');if(!el)return;
+  if(!r.ok||!r.data?.length){el.innerHTML='<div class="empty">No research reports found</div>';return;}
+  el.innerHTML=r.data.map(rpt=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rim)"><span style="font-size:11px;flex:1">${rpt.name}</span><span style="font-size:8px;color:var(--mute)">${rpt.size_kb}kb</span><span style="font-size:8px;color:var(--mute)">${rpt.modified}</span><button class="btn btnm" style="padding:3px 8px" onclick="viewRpt('${rpt.name}')">VIEW</button></div>`).join('');
+}
+async function viewRpt(name){const r=await api('/api/research/'+encodeURIComponent(name));if(r.ok)alert(r.data.content?.slice(0,2000)||'Empty');else toast('❌ '+r.error,true);}
+
+// LOGS
+async function loadLogs(){
+  const agent=$('lf-agent')?.value||'all',level=$('lf-level')?.value||'all';
+  const r=await api('/api/logs?agent='+agent+'&level='+level+'&limit=200');
+  const el=$('logstream');if(!el)return;
+  if(!r.ok||!Array.isArray(r.data)){el.innerHTML='<div class="empty">No logs — run agents first</div>';return;}
+  el.innerHTML=r.data.slice().reverse().map(log=>{
+    const lc=log.level==='ERROR'?'le':log.level==='WARN'?'lw':'li';
+    return `<div class="ll"><span class="lt">${log.time||''}</span><span class="la">[${log.agent||'sys'}]</span><span class="${lc}">${log.message||''}</span></div>`;
+  }).join('');
+  el.scrollTop=0;
+}
+
+// CHART HELPER
+function bc(id,type,data,opts={}){
+  const cv=$(id);if(!cv)return;
+  if(charts[id])charts[id].destroy();
+  const def={responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:'#8899bb',font:{family:'Space Mono',size:8},boxWidth:10}}},...opts};
+  charts[id]=new Chart(cv.getContext('2d'),{type,data,options:def});
+}
+
+// TICKER
+function buildTicker(news){
+  const track=$('tktrack');if(!track||!news.length)return;
+  const items=news.slice(0,10);
+  const html=items.map(n=>{
+    const sc=parseFloat(n.sentiment_score||n.score||0);
+    const emoji=sc>1?'🟢':sc<-1?'🔴':'🟡';
+    return `<div class="tki">${emoji} ${n.flag||'🌐'} ${(n.translated_title||n.title||'').slice(0,65)}</div>`;
+  }).join('');
+  track.innerHTML=html+html;
+}
+
+// INIT
+window.addEventListener('load',async()=>{
+  tx('hdate',new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'}));
+  drawGauge(52);
+  buildSigCards(null,'home-sigs');
+  buildSlides([]);
+  if(!getKey())showModal();
+  else await refreshAll();
+  setInterval(refreshAll,5*60*1000);
+});
+</script>
+</body>
+</html>

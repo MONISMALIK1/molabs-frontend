@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mo.labs · Healthcare</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap');
+    :root{
+      --ink:#08090d; --paper:#0d0f17; --card:#161924; --rim:#1e2535; --rim2:#28334a;
+      --hi:#7cffcb; --hi2:#4d9fff; --red:#ff4466; --yel:#ffd166; --txt:#ccd6f0; --dim:#3d4f6b; --mute:#8899bb;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:var(--ink);color:var(--txt);font-family:'Space Mono',monospace}
+    body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 4px)}
+    .wrap{min-height:100%;display:flex;flex-direction:column}
+    .top{background:var(--paper);border-bottom:1px solid var(--rim);display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .hex{width:28px;height:28px;background:linear-gradient(135deg,var(--hi),var(--hi2));clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-size:11px}
+    .bn{font-family:'Syne';font-weight:800;letter-spacing:2px;text-transform:uppercase;font-size:16px}
+    .bn em{color:var(--hi);font-style:normal}
+    .sub{font-size:8px;color:var(--dim);letter-spacing:2px;text-transform:uppercase}
+    .tr{display:flex;align-items:center;gap:10px;font-size:9px;color:var(--dim)}
+    .pill{padding:2px 8px;border-radius:3px;font-size:8px;font-weight:700;letter-spacing:1px}
+    .pill.on{background:rgba(124,255,203,.12);color:var(--hi);border:1px solid rgba(124,255,203,.2)}
+    .pill.off{background:rgba(255,68,102,.12);color:var(--red);border:1px solid rgba(255,68,102,.2)}
+    .btn{padding:6px 12px;border-radius:4px;border:1px solid var(--rim);background:transparent;color:var(--mute);font-family:'Space Mono';font-size:8px;cursor:pointer;letter-spacing:.5px;text-transform:uppercase}
+    .btn:hover{border-color:var(--hi);color:var(--hi)}
+    .btn.hi{background:var(--hi);color:#000;border-color:var(--hi);font-weight:700}
+    .btn.hi:hover{opacity:.85}
+    .main{flex:1;overflow:auto;padding:18px}
+    .card{background:var(--card);border:1px solid var(--rim);border-radius:10px;padding:16px;position:relative;margin-bottom:14px}
+    .ct{font-size:7px;color:var(--hi);letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    .ct::after{content:'';flex:1;height:1px;background:var(--rim)}
+    .srow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .inp,.sel{background:#12151f;border:1px solid var(--rim);border-radius:5px;padding:7px 11px;color:var(--txt);font-family:'Space Mono';font-size:9px;outline:none}
+    .inp:focus,.sel:focus{border-color:var(--hi)}
+    .tw{overflow:auto;max-height:560px}
+    .tw::-webkit-scrollbar{width:3px;height:3px}
+    .tw::-webkit-scrollbar-thumb{background:var(--rim)}
+    table{width:100%;border-collapse:collapse}
+    th{position:sticky;top:0;background:var(--card);font-size:7px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;text-align:left;padding:7px 10px;border-bottom:1px solid var(--rim);white-space:nowrap}
+    td{padding:8px 10px;border-bottom:1px solid rgba(30,37,53,.6);font-size:9px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+    tr:hover td{background:rgba(124,255,203,.02)}
+    .pgr{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:8px;color:var(--dim)}
+    .pb{padding:3px 9px;border-radius:3px;border:1px solid var(--rim);background:transparent;color:var(--mute);cursor:pointer;font-family:'Space Mono';font-size:7px}
+    .pb:hover{border-color:var(--hi);color:var(--hi)}
+    .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .stat{background:var(--card);border:1px solid var(--rim);border-radius:8px;padding:12px 14px}
+    .sl{font-size:7px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+    .sv{font-family:'Syne';font-size:22px;font-weight:800;line-height:1}
+    .sv.hi{color:var(--hi)} .sv.b{color:var(--hi2)} .sv.y{color:var(--yel)} .sv.r{color:var(--red)}
+    .toast{position:fixed;bottom:18px;right:18px;background:var(--card);border:1px solid var(--hi);border-radius:6px;padding:10px 14px;font-size:9px;color:var(--hi);z-index:2000;transform:translateY(60px);transition:transform .2s;max-width:360px}
+    .toast.on{transform:translateY(0)}
+    .toast.err{border-color:var(--red);color:var(--red)}
+    .note{color:var(--mute);font-size:9px;line-height:1.8}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <div class="hex">⬡</div>
+        <div>
+          <div class="bn"><em>mo</em>.labs</div>
+          <div class="sub">Healthcare dashboard · local CSV explorer</div>
+        </div>
+      </div>
+      <div class="tr">
+        <span id="tk">00:00:00</span>
+        <span id="apipill" class="pill off">API OFFLINE</span>
+        <button class="btn" onclick="refreshAll()">⟳ Refresh</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="card">
+        <div class="ct">✚ Healthcare summary</div>
+        <div class="statgrid">
+          <div class="stat"><div class="sl">Patients</div><div class="sv hi" id="s-pts">—</div></div>
+          <div class="stat"><div class="sl">Conditions</div><div class="sv b" id="s-cond">—</div></div>
+          <div class="stat"><div class="sl">Hospitals</div><div class="sv y" id="s-hosp">—</div></div>
+          <div class="stat"><div class="sl">Treatments</div><div class="sv r" id="s-trt">—</div></div>
+        </div>
+        <div style="margin-top:12px" class="note">
+          This page reads from `healthcare_data/*.csv` via the API. If prompted, paste your API key (printed when you run `python src/api.py`).
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ct">▦ Healthcare CSV browser</div>
+        <div class="srow" style="margin-bottom:10px">
+          <select class="sel" id="csvsel" onchange="onCsvChange()">
+            <option value="healthcare_master">healthcare_master.csv</option>
+            <option value="patients">healthcare_patients.csv</option>
+            <option value="conditions">healthcare_conditions.csv</option>
+            <option value="hospitals">healthcare_hospitals.csv</option>
+            <option value="treatments">healthcare_treatments.csv</option>
+          </select>
+          <input class="inp" id="q" placeholder="Search..." style="flex:1;min-width:220px" oninput="onSearch()"/>
+          <button class="btn hi" onclick="downloadCsv()">⬇ Download</button>
+        </div>
+
+        <div class="note" id="meta" style="margin-bottom:10px">—</div>
+        <div class="tw">
+          <table>
+            <thead id="th"></thead>
+            <tbody id="tb"></tbody>
+          </table>
+        </div>
+        <div class="pgr">
+          <button class="pb" onclick="page(-1)">◄ Prev</button>
+          <span id="pi" style="color:var(--txt)">—</span>
+          <button class="pb" onclick="page(1)">Next ►</button>
+          <span style="margin-left:auto;font-size:7px" id="pt"></span>
+        </div>
+      </div>
+    </main>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:5001';
+    let API_KEY = localStorage.getItem('molabs_api_key') || '';
+
+    const $ = (id) => document.getElementById(id);
+    function toast(msg, err=false) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.className = 'toast on' + (err ? ' err' : '');
+      setTimeout(() => t.classList.remove('on'), 2800);
+    }
+
+    function tick(){ $('tk').textContent = new Date().toLocaleTimeString('en-US',{hour12:false}); }
+    tick(); setInterval(tick, 1000);
+
+    function promptForKey() {
+      if (!API_KEY) {
+        const key = prompt('🔑 Enter your mo.labs API Key:\n\nRun: python src/api.py\n\nThe key prints in the terminal.');
+        if (key && key.trim()) {
+          API_KEY = key.trim();
+          localStorage.setItem('molabs_api_key', API_KEY);
+        }
+      }
+    }
+    promptForKey();
+
+    async function api(path, opts={}) {
+      if (!API_KEY) {
+        promptForKey();
+        if (!API_KEY) return { ok:false, error:'API key required' };
+      }
+      opts.headers = opts.headers || {};
+      opts.headers['X-API-Key'] = API_KEY;
+      try {
+        const r = await fetch(API + path, opts);
+        return await r.json();
+      } catch (e) {
+        return { ok:false, error:e.message };
+      }
+    }
+
+    async function checkAPI() {
+      const r = await fetch(API + '/api/health').then(x=>x.json()).catch(()=>({ok:false}));
+      const el = $('apipill');
+      if (r.ok) { el.className = 'pill on'; el.textContent = 'API ONLINE'; }
+      else { el.className = 'pill off'; el.textContent = 'API OFFLINE'; }
+    }
+
+    // --- state ---
+    const st = { page:0, pages:1, pageSize:80, search:'' };
+
+    function renderTable(data) {
+      if (!data) return;
+      if (!data.exists) {
+        $('meta').textContent = `Missing: ${data.name || ''} — ${data.message || 'not found'}`;
+        $('th').innerHTML = '<tr><th>Error</th></tr>';
+        $('tb').innerHTML = `<tr><td style="color:var(--red)">File not found. Check API project dir + CSV mapping.</td></tr>`;
+        $('pi').textContent = '—';
+        $('pt').textContent = '';
+        return;
+      }
+
+      $('meta').textContent = `▦ ${data.name} — ${data.total} rows · ${(data.cols||[]).length} cols · ${data.size_kb||0}KB · ${data.modified||'—'}`;
+      $('pi').textContent = `Page ${(data.page||0)+1} of ${data.pages||1}`;
+      $('pt').textContent = `${data.total} total rows`;
+
+      const cols = data.cols || [];
+      $('th').innerHTML = '<tr>' + cols.map(c=>`<th title="${c}">${c}</th>`).join('') + '</tr>';
+      $('tb').innerHTML = (data.rows || []).map(row => {
+        return '<tr>' + cols.map(col => {
+          const v = row[col] ?? '';
+          return `<td title="${String(v).replaceAll('"','&quot;')}">${v}</td>`;
+        }).join('') + '</tr>';
+      }).join('') || '<tr><td style="color:var(--dim)">No rows</td></tr>';
+    }
+
+    async function loadCsv() {
+      const name = $('csvsel').value;
+      const q = (st.search || '').trim();
+      const r = await api(`/api/csv/${encodeURIComponent(name)}?page=${st.page}&page_size=${st.pageSize}&search=${encodeURIComponent(q)}`);
+      if (!r.ok) { toast(`❌ ${r.error || 'API error'}`, true); return; }
+      const data = r.data;
+      st.pages = data.pages || 1;
+      renderTable(data);
+    }
+
+    function onSearch() { st.page = 0; st.search = $('q').value || ''; loadCsv(); }
+    function onCsvChange() { st.page = 0; st.search = $('q').value || ''; loadCsv(); }
+    function page(dir) { st.page = Math.max(0, Math.min((st.pages||1)-1, st.page + dir)); loadCsv(); }
+    function downloadCsv() { window.open(`${API}/api/csv/${$('csvsel').value}/download`); }
+
+    async function loadCounts() {
+      const r = await api('/api/json/healthcare_db');
+      if (!r.ok) return;
+      const d = r.data?.data;
+      if (!d) return;
+      $('s-pts').textContent  = d.patients?.length   ?? '0';
+      $('s-cond').textContent = d.conditions?.length ?? '0';
+      $('s-hosp').textContent = d.hospitals?.length  ?? '0';
+      $('s-trt').textContent  = d.treatments?.length ?? '0';
+    }
+
+    async function refreshAll() {
+      await checkAPI();
+      await loadCounts();
+      await loadCsv();
+      toast('⟳ Refreshed');
+    }
+
+    window.addEventListener('load', () => {
+      refreshAll();
+      setInterval(() => { checkAPI(); }, 4000);
+    });
+  </script>
+</body>
+</html>
+
