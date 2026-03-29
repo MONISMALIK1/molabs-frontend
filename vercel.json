@@ -1,12 +1,4 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "*.html", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/",           "dest": "/index.html" },
-    { "src": "/v2",         "dest": "/v2.html" },
-    { "src": "/healthcare", "dest": "/healthcare.html" },
-    { "src": "/medsafe",    "dest": "/medsafe.html" }
-  ]
+  "cleanUrls": true,
+  "trailingSlash": false
 }
