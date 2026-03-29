@@ -1,8 +1,12 @@
 {
-  "rewrites": [
-    { "source": "/",           "destination": "/index.html" },
-    { "source": "/v2",         "destination": "/v2.html" },
-    { "source": "/healthcare", "destination": "/healthcare.html" },
-    { "source": "/medsafe",    "destination": "/medsafe.html" }
+  "version": 2,
+  "builds": [
+    { "src": "*.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/",           "dest": "/index.html" },
+    { "src": "/v2",         "dest": "/v2.html" },
+    { "src": "/healthcare", "dest": "/healthcare.html" },
+    { "src": "/medsafe",    "dest": "/medsafe.html" }
   ]
 }
